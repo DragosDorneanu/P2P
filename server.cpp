@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <unistd.h>
+#include <openssl/sha.h>
 #include "database_operation.hpp"
 
 #define PORT 1234
@@ -66,24 +67,58 @@ bool acceptClient(int &client, int &socketDescriptor, struct sockaddr_in * from)
 	return true;
 }
 
+void error()
+{
+	perror("Error");
+	exit(EXIT_FAILURE);
+}
+
+void loginFailMessage(int &client)
+{
+	if(write(client, "Login failed\n", strlen("Login failed\n")) == -1)
+		error();
+}
+
+char * getSHA256Hash(char * str)
+{
+	char hexPassword[64];
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha;
+	SHA256_Init(&sha);
+	SHA256_Update(&sha, str, strlen(str));
+	SHA256_Final(hash, &sha);
+	for(unsigned int index = 0; index < sizeof(hash); ++index)
+		sprintf(hexPassword + 2 * index, "%02x", hash[index]);
+	return hexPassword;
+}
+
+void successfulLoginProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char username[50])
+{
+	updateUserInfo(database, clientInfo, username);
+	dropUserAvailableFile(database, username);
+	sendDownloadPathToClient(database, client, username);
+	//client must send a list of available files(directory where to look is set at sign up and is called \"DownloadPath\" in Users table)
+	insertUserAvailableFiles(database, client, username);
+}
+
 void * solveRequest(void * args)
 {
-	DatabaseQuery * parameters = (DatabaseQuery *)args;
+	DatabaseQueryParameters * parameters = (DatabaseQueryParameters *)args;
 	MYSQL * database = parameters->getDatabase();
+	int client = *(parameters->getClient());
 	MYSQL_RES * queryResult;
-	MYSQL_ROW resultRow;
-	int client = *parameters->getClient();
-	unsigned int fieldsCount;
-	queryResult = query(database, "select sysdate() from dual");
-	fieldsCount = mysql_num_fields(queryResult);
-	while(resultRow = mysql_fetch_row(queryResult))
-	{
-		for(unsigned int index = 0; index < fieldsCount; ++index)
-		{
-			if(write(client, resultRow[index], sizeof(resultRow[index])) == -1 || write(client, "\n" , 1) == -1)
-				perror("Write error");
-		}
-	}
+	char username[50], password[50], sqlCommand[1024];
+	unsigned int sizeOfUsername, sizeOfPassword;
+
+	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 || read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
+		error();
+	sprintf(sqlCommand, "select username from Users where username = '%s' and password = '%s'", username, getSHA256Hash(password));
+	queryResult = query(database, sqlCommand);
+	queryResult = mysql_store_result(database);
+	if(mysql_num_rows(queryResult))
+		successfulLoginProcedure(database, client, parameters->getClientInfo(), username);
+	else
+		loginFailMessage(client);
 }
 
 int main()
@@ -103,7 +138,7 @@ int main()
 		cout << "Waiting for a client to connect..." << endl;
 		if(!acceptClient(clientSocket, socketDescriptor, &from))
 			continue;
-		DatabaseQuery threadParameters(databaseConnection, &clientSocket);
+		DatabaseQueryParameters threadParameters(databaseConnection, &clientSocket, from);
 		pthread_create(&thread, NULL, solveRequest, (void *)&threadParameters);
 		pthread_detach(thread);
 	}
