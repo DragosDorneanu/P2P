@@ -92,13 +92,13 @@ char * getSHA256Hash(char * str)
 	return hexPassword;
 }
 
-void successfulLoginProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char username[50])
+void successfulLoginProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, MYSQL_ROW id)
 {
-	updateUserInfo(database, clientInfo, username);
-	dropUserAvailableFile(database, username);
-	sendDownloadPathToClient(database, client, username);
+	updateUserStatus(database, clientInfo, id[0]);
+	dropUserAvailableFiles(database, id[0]);
+	sendDownloadPathToClient(database, client, id[0]);
 	//client must send a list of available files(directory where to look is set at sign up and is called \"DownloadPath\" in Users table)
-	insertUserAvailableFiles(database, client, username);
+	insertUserAvailableFiles(database, client, id[0]);
 }
 
 void * solveRequest(void * args)
@@ -112,11 +112,10 @@ void * solveRequest(void * args)
 
 	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 || read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
 		error();
-	sprintf(sqlCommand, "select username from Users where username = '%s' and password = '%s'", username, getSHA256Hash(password));
+	sprintf(sqlCommand, "select id from UsersInfo where username = '%s' and password = '%s'", username, getSHA256Hash(password));
 	queryResult = query(database, sqlCommand);
-	queryResult = mysql_store_result(database);
 	if(mysql_num_rows(queryResult))
-		successfulLoginProcedure(database, client, parameters->getClientInfo(), username);
+		successfulLoginProcedure(database, client, parameters->getClientInfo(), mysql_fetch_row(queryResult));
 	else
 		loginFailMessage(client);
 }

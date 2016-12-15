@@ -80,36 +80,36 @@ MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 	return queryResult;
 }
 
-void updateUserInfo(MYSQL * database, struct sockaddr_in clientInfo, char username[50])
+void updateUserStatus(MYSQL * database, struct sockaddr_in clientInfo, char * id)
 {
 	char sqlCommand[100];
-	sprintf(sqlCommand, "update Users set status = 'online', ip = '%s' where username = '%s'", inet_ntoa(clientInfo.sin_addr), username);
+	sprintf(sqlCommand, "update UserStatus set status = 'online', ip = '%s' where id = %d", inet_ntoa(clientInfo.sin_addr), atoi(id));
 	query(database, sqlCommand);
 }
 
-void dropUserAvailableFile(MYSQL * database, char username[50])
+void dropUserAvailableFiles(MYSQL * database, char * id)
 {
 	char sqlCommand[100];
-	sprintf(sqlCommand, "delete from Files where username = '%s'", username);
+	sprintf(sqlCommand, "delete from Files where id = %d", atoi(id));
 	query(database, sqlCommand);
 }
 
-void sendDownloadPathToClient(MYSQL * database, int &client, char username[50])
+void sendDownloadPathToClient(MYSQL * database, int &client, char * id)
 {
 	char sqlCommand[100];
 	MYSQL_RES * result;
 	MYSQL_ROW outputRow;
-	sprintf(sqlCommand, "select DownloadPath from Users where username = '%s'", username);
-	result = mysql_store_result(database);
+	sprintf(sqlCommand, "select DownloadPath from UserInfo where id = %d", atoi(id));
+	result = query(database, sqlCommand);
 	outputRow = mysql_fetch_row(result);
-	if(write(client, outputRow[0], sizeof(outputRow[0])) == -1)
+	if(write(client, outputRow[0], strlen(outputRow[0])) == -1)
 	{
 		perror("Write error");
 		exit(EXIT_FAILURE);
 	}
 }
 
-void insertUserAvailableFiles(MYSQL * database, int &client, char username[50])
+void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 {
 	char sqlCommand[100];
 	char sizeStr[30], fileName[100], fileHash[64];
@@ -129,7 +129,7 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char username[50])
 			readError();
 		if(read(client, fileHash, sizeOfHash) == -1)
 			readError();
-		sprintf(sqlCommand, "insert into Files value ('%s', '%s', %d, '%s')", username, fileName, sizeOfFile, fileHash);
+		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", atoi(id), fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);
 	}
 }
