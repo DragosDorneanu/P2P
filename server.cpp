@@ -15,11 +15,27 @@
 #include <unistd.h>
 #include <openssl/sha.h>
 #include "database_operation.hpp"
+#include "SignInServerProcedure.hpp"
+#include "SignUpServerProcedure.hpp"
 
 #define PORT 1234
 #define BACKLOG_SIZE 10
+#define SIGN_UP 1
+#define SIGN_IN 2
 
 using namespace std;
+
+void readError()
+{
+	perror("Read Error");
+	exit(EXIT_FAILURE);
+}
+
+void writeError()
+{
+	perror("Write Error");
+	exit(EXIT_FAILURE);
+}
 
 void createSocket(int &socketDescriptor)
 {
@@ -35,7 +51,7 @@ void setServerInformation(struct sockaddr_in &server)
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(PORT);
-	server.sin_addr.s_addr = htons(INADDR_ANY);
+	server.sin_addr.s_addr = htonl(INADDR_ANY);
 }
 
 void bindServer(int &socketDescriptor, struct sockaddr_in * server)
@@ -67,18 +83,6 @@ bool acceptClient(int &client, int &socketDescriptor, struct sockaddr_in * from)
 	return true;
 }
 
-void error()
-{
-	perror("Error");
-	exit(EXIT_FAILURE);
-}
-
-void loginFailMessage(int &client)
-{
-	if(write(client, "Login failed\n", strlen("Login failed\n")) == -1)
-		error();
-}
-
 char * getSHA256Hash(char * str)
 {
 	char hexPassword[64];
@@ -92,32 +96,17 @@ char * getSHA256Hash(char * str)
 	return hexPassword;
 }
 
-void successfulLoginProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, MYSQL_ROW id)
-{
-	updateUserStatus(database, clientInfo, id[0]);
-	dropUserAvailableFiles(database, id[0]);
-	sendDownloadPathToClient(database, client, id[0]);
-	//client must send a list of available files(directory where to look is set at sign up and is called \"DownloadPath\" in Users table)
-	insertUserAvailableFiles(database, client, id[0]);
-}
-
 void * solveRequest(void * args)
 {
 	DatabaseQueryParameters * parameters = (DatabaseQueryParameters *)args;
-	MYSQL * database = parameters->getDatabase();
 	int client = *(parameters->getClient());
-	MYSQL_RES * queryResult;
-	char username[50], password[50], sqlCommand[1024];
-	unsigned int sizeOfUsername, sizeOfPassword;
-
-	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 || read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
-		error();
-	sprintf(sqlCommand, "select id from UsersInfo where username = '%s' and password = '%s'", username, getSHA256Hash(password));
-	queryResult = query(database, sqlCommand);
-	if(mysql_num_rows(queryResult))
-		successfulLoginProcedure(database, client, parameters->getClientInfo(), mysql_fetch_row(queryResult));
+	int option;
+	if(read(client, &option, 4) == -1)
+		readError();
+	if(option == SIGN_UP)
+		{cout << "HERE !!!\n"; signUpServerProcedure(parameters);}
 	else
-		loginFailMessage(client);
+		{cout << "IN!!!\n"; signInServerProcedure(parameters);}
 }
 
 int main()
@@ -125,6 +114,7 @@ int main()
 	int socketDescriptor;
 	struct sockaddr_in server, from;
 	MYSQL * databaseConnection;
+
 	createSocket(socketDescriptor);
 	setServerInformation(server);
 	bindServer(socketDescriptor, &server);

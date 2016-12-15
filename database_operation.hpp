@@ -48,15 +48,19 @@ public:
 	}
 };
 
-void readError()
-{
-	perror("Read error");
-	exit(EXIT_FAILURE);
-}
+void readError();
+
+void writeError();
 
 void databaseConnectionError()
 {
 	perror("Error while connecting to database...");
+	exit(EXIT_FAILURE);
+}
+
+void databaseQueryError()
+{
+	perror("Query error");
 	exit(EXIT_FAILURE);
 }
 
@@ -71,11 +75,9 @@ void connectToDatabase(MYSQL *& databaseConnection)
 
 MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
+	printf("SQL : %s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
-	{
-		perror("Query error");
-		return NULL;
-	}
+		databaseQueryError();
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);
 	return queryResult;
 }
@@ -113,25 +115,31 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 {
 	char sqlCommand[100];
 	char sizeStr[30], fileName[100], fileHash[64];
-	int sizeOfFile, readBytes, sizeOfFileName, sizeOfHash;
-	while(true)
+	int sizeOfFile, readBytes, sizeOfFileName;
+	while((readBytes = read(client, &sizeOfFileName, 4)) > 0 &&
+			(readBytes = read(client, fileName, sizeOfFileName)) > 0 &&
+			(readBytes = read(client, &sizeOfFile, 4)) > 0 &&
+			(readBytes = read(client, fileHash, 64)) > 0)
 	{
-		//user must send fileName, sizeOfFile, md5 hash for file
-		if((readBytes = read(client, &sizeOfFileName, 4)) == -1)
-			readError();
-		if(readBytes == 0)
-			break;
-		if((readBytes = read(client, fileName, sizeOfFileName)) == -1)
-			readError();
-		if(read(client, &sizeOfFile, 4) == -1)
-			readError();
-		if(read(client, &sizeOfHash, 4) == -1)
-			readError();
-		if(read(client, fileHash, sizeOfHash) == -1)
-			readError();
 		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", atoi(id), fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);
 	}
+	if(readBytes == -1)
+		readError();
+}
+
+void insertInUserInfo(MYSQL * database, char username[50], char hashPassword[64], char downloadPath[512])
+{
+	char sqlCommand[1024];
+	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s', '%s')", username, hashPassword, downloadPath);
+	query(database, sqlCommand);
+}
+
+void insertInUserStatus(MYSQL * database, struct sockaddr_in clientInfo)
+{
+	char sqlCommand[100];
+	sprintf(sqlCommand, "insert into UserStatus value (NULL, 'offline', '%s')", inet_ntoa(clientInfo.sin_addr));
+	query(database, sqlCommand);
 }
 
 #endif /* DATABASE_OPERATION_HPP_ */
