@@ -25,16 +25,12 @@
 
 using namespace std;
 
-void readError()
-{
+void readError() {
 	perror("Read Error");
-	exit(EXIT_FAILURE);
 }
 
-void writeError()
-{
+void writeError() {
 	perror("Write Error");
-	exit(EXIT_FAILURE);
 }
 
 void createSocket(int &socketDescriptor)
@@ -104,19 +100,21 @@ void * solveRequest(void * args)
 	if(read(client, &option, 4) == -1)
 		readError();
 	if(option == SIGN_UP)
-		{cout << "HERE !!!\n"; signUpServerProcedure(parameters);}
+		signUpServerProcedure(parameters);
 	else
-		{cout << "IN!!!\n"; signInServerProcedure(parameters);}
+		signInServerProcedure(parameters);
 }
 
 int main()
 {
-	int socketDescriptor;
+	int socketDescriptor, enableReuse = 1;
 	struct sockaddr_in server, from;
 	MYSQL * databaseConnection;
 
 	createSocket(socketDescriptor);
 	setServerInformation(server);
+	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
+	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	bindServer(socketDescriptor, &server);
 	listenSocket(socketDescriptor);
 	connectToDatabase(databaseConnection);

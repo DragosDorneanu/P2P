@@ -48,7 +48,9 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	char username[50], password[50], sqlCommand[200], downloadPath[512];
 	unsigned int sizeOfUsername, sizeOfPassword, sizeOfPath;
 
-	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 || read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1 || read(client, &sizeOfPath, 4) == -1 || read(client, downloadPath, sizeOfPath) == -1)
+	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
+			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1 ||
+			read(client, &sizeOfPath, 4) == -1 || read(client, downloadPath, sizeOfPath) == -1)
 	{
 		signUpFailMessage(client);
 		readError();

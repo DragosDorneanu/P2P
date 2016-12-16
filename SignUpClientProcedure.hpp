@@ -39,6 +39,7 @@ void readPasswordInHiddenMode(char password[50], unsigned int &size)
 	cin >> password;
 	tcsetattr(fileno(stdin), TCSANOW, &oldTerminal);
 	cout << endl;
+	size = strlen(password);
 }
 
 void sendUserInfoToServer(int &client, unsigned int userSize, char username[50], unsigned int passwordSize, char password[50], unsigned int pathSize, char path[512])

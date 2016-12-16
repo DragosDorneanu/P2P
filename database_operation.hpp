@@ -52,16 +52,12 @@ void readError();
 
 void writeError();
 
-void databaseConnectionError()
-{
+void databaseConnectionError() {
 	perror("Error while connecting to database...");
-	exit(EXIT_FAILURE);
 }
 
-void databaseQueryError()
-{
+void databaseQueryError() {
 	perror("Query error");
-	exit(EXIT_FAILURE);
 }
 
 void connectToDatabase(MYSQL *& databaseConnection)
@@ -105,10 +101,7 @@ void sendDownloadPathToClient(MYSQL * database, int &client, char * id)
 	result = query(database, sqlCommand);
 	outputRow = mysql_fetch_row(result);
 	if(write(client, outputRow[0], strlen(outputRow[0])) == -1)
-	{
-		perror("Write error");
-		exit(EXIT_FAILURE);
-	}
+		writeError();
 }
 
 void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
