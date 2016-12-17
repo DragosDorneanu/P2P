@@ -107,16 +107,17 @@ void dropUserAvailableFiles(MYSQL * database, char * id)
 
 void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 {
-	char sqlCommand[300];
-	char sizeStr[30], fileName[100], fileHash[64];
-	int sizeOfFile, readBytes, sizeOfFileName;
+	char sqlCommand[512];
+	char fileName[100], fileHash[256];
+	int sizeOfFile, readBytes, sizeOfFileName, idValue;
 
+	idValue = atoi(id);
 	while((readBytes = read(client, &sizeOfFileName, 4)) > 0 &&
 			(readBytes = read(client, fileName, sizeOfFileName)) > 0 &&
 			(readBytes = read(client, &sizeOfFile, 4)) > 0 &&
 			(readBytes = read(client, fileHash, 64)) > 0)
 	{
-		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", atoi(id), fileName, sizeOfFile, fileHash);
+		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", idValue, fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);
 	}
 	if(readBytes == -1)
@@ -126,7 +127,6 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 void insertInUserInfo(MYSQL * database, char * username, char * password)
 {
 	char sqlCommand[1024];
-	printf("sha password : %s\n", getSHA256Hash(password));
 	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s')", username, getSHA256Hash(password));
 	query(database, sqlCommand);
 }

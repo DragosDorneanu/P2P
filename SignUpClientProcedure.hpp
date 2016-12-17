@@ -103,7 +103,7 @@ bool listDirectory(int &client, char * currentDirectory)
 	dirent * file;
 	unsigned int size;
 	struct stat fileStatus;
-	char newPath[512], fileHash[65];
+	char newPath[512], fileHash[256];
 
 	if((directory = opendir(currentDirectory)) != NULL)
 	{
@@ -111,25 +111,28 @@ bool listDirectory(int &client, char * currentDirectory)
 		{
 			if(!isHiddenFile(file))
 			{
-				size = strlen(file->d_name);
-				if(write(client, &size, 4) == -1 || write(client, file->d_name, size) == -1)
-					writeError();
-				sprintf(newPath, currentDirectory, "%s/%s", file->d_name);
-				if(!statFile(fileStatus, newPath))
-					return false;
-				if(write(client, &fileStatus.st_size, 4) == -1)
-					writeError();
-				if(!hashFile(newPath, fileHash))
-					return false;
-				if(write(client, fileHash, 64) == -1)
-					writeError();
 				if(isDirectory(file))
 				{
-					if(!listDirectory(client, newPath))
-					{
-						closedir(directory);
+						if(!listDirectory(client, newPath))
+						{
+							closedir(directory);
+							return false;
+						}
+				}
+				else
+				{
+					size = strlen(file->d_name);
+					if(write(client, &size, 4) == -1 || write(client, file->d_name, size) == -1)
+						writeError();
+					sprintf(newPath, currentDirectory, "%s/%s", file->d_name);
+					if(!statFile(fileStatus, newPath))
 						return false;
-					}
+					if(write(client, &fileStatus.st_size, 4) == -1)
+						writeError();
+					if(!hashFile(newPath, fileHash))
+						return false;
+					if(write(client, fileHash, 64) == -1)
+						writeError();
 				}
 			}
 		}

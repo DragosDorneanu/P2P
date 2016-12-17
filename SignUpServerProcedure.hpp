@@ -40,8 +40,12 @@ void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in 
 	insertInUserStatus(database, clientInfo);
 	sprintf(sqlCommand, "select id from UserInfo where username = '%s'", username);
 	queryResult = query(database, sqlCommand);
-	id = mysql_fetch_row(queryResult);
-	insertUserAvailableFiles(database, client, id[0]);
+	if(mysql_num_rows(queryResult) > 0)
+	{
+		id = mysql_fetch_row(queryResult);
+		insertUserAvailableFiles(database, client, id[0]);
+	}
+	else printf("Id not found\n");
 }
 
 void signUpServerProcedure(DatabaseQueryParameters * parameters)
