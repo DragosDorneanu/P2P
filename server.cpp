@@ -92,6 +92,7 @@ void * solveRequest(void * args)
 	else
 		signInServerProcedure(parameters);
 	close(client);
+	mysql_thread_end();
 }
 
 int main()
@@ -102,8 +103,8 @@ int main()
 
 	createSocket(socketDescriptor);
 	setServerInformation(server);
-	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
-	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
+	//setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
+	//setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	bindServer(socketDescriptor, &server);
 	listenSocket(socketDescriptor);
 	connectToDatabase(databaseConnection);

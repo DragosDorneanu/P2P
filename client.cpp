@@ -121,6 +121,7 @@ int main()
 		signUpProcedure(socketDescriptor);
 	else
 		signInProcedure();
+	close(socketDescriptor);
 	return 0;
 }
 

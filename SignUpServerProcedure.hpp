@@ -51,6 +51,7 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL_RES * queryResult;
 	char * username = new char[50], * password = new char[50], sqlCommand[200];
 	unsigned int sizeOfUsername, sizeOfPassword;
+	pthread_mutex_t dbLock;
 
 	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
 			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
@@ -63,9 +64,12 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	sprintf(sqlCommand, "select username from UserInfo where username = '%s'", username);
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult) == 0)
+	{
+		pthread_mutex_lock(&dbLock);
 		succesfulSignUpProcedure(database, client, parameters->getClientInfo(), username, password);
-	else
-		signUpFailMessage(client);
+		pthread_mutex_unlock(&dbLock);
+	}
+	else signUpFailMessage(client);
 }
 
 #endif /* SIGNUPSERVERPROCEDURE_HPP_ */

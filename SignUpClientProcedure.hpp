@@ -148,7 +148,7 @@ bool sendAvailableFilesToServer(int &client, char downloadPath[512])
 
 void signUpProcedure(int &client)
 {
-	char username[50], password[50], downloadPath[512];
+	char * username = new char[50], * password = new char[50], * downloadPath = new char[512];
 	unsigned int sizeOfUsername, sizeOfPassword, signUpStatus;
 
 	cin.ignore(1, '\n');
