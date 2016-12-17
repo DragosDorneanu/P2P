@@ -15,8 +15,6 @@
 #define SIGN_UP_ERROR 3
 #define SIGN_UP_SUCCESS 6
 
-char * getSHA256Hash(char * str);
-
 void signUpFailMessage(int &client)
 {
 	unsigned int signUpError = SIGN_UP_ERROR;
@@ -31,12 +29,19 @@ void signUpSuccessMessage(int &client)
 		writeError();
 }
 
-void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char username[50], char password[50], char downloadPath[512], char * id)
+void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char username[50], char password[50])
 {
+	char sqlCommand[200];
+	MYSQL_RES * queryResult;
+	MYSQL_ROW id;
+
 	signUpSuccessMessage(client);
-	insertInUserInfo(database, username, getSHA256Hash(password), downloadPath);
+	insertInUserInfo(database, username, password);
 	insertInUserStatus(database, clientInfo);
-	insertUserAvailableFiles(database, client, id);
+	sprintf(sqlCommand, "select id from UserInfo where username = '%s'", username);
+	queryResult = query(database, sqlCommand);
+	id = mysql_fetch_row(queryResult);
+	insertUserAvailableFiles(database, client, id[0]);
 }
 
 void signUpServerProcedure(DatabaseQueryParameters * parameters)
@@ -44,13 +49,11 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL * database = parameters->getDatabase();
 	int client = *(parameters->getClient());
 	MYSQL_RES * queryResult;
-	MYSQL_ROW outputRow;
-	char username[50], password[50], sqlCommand[200], downloadPath[512];
-	unsigned int sizeOfUsername, sizeOfPassword, sizeOfPath;
+	char username[50], password[50], sqlCommand[200];
+	unsigned int sizeOfUsername, sizeOfPassword;
 
 	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
-			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1 ||
-			read(client, &sizeOfPath, 4) == -1 || read(client, downloadPath, sizeOfPath) == -1)
+			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
 	{
 		signUpFailMessage(client);
 		readError();
@@ -60,11 +63,9 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	sprintf(sqlCommand, "select username from UserInfo where username = '%s'", username);
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult) == 0)
-	{
-		outputRow = mysql_fetch_row(queryResult);
-		succesfulSignUpProcedure(database, client, parameters->getClientInfo(), username, password, downloadPath, outputRow[0]);
-	}
-	else signUpFailMessage(client);
+		succesfulSignUpProcedure(database, client, parameters->getClientInfo(), username, password);
+	else
+		signUpFailMessage(client);
 }
 
 #endif /* SIGNUPSERVERPROCEDURE_HPP_ */

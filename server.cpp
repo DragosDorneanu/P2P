@@ -70,7 +70,7 @@ void listenSocket(int &socketDescriptor)
 
 bool acceptClient(int &client, int &socketDescriptor, struct sockaddr_in * from)
 {
-	unsigned int size = sizeof(struct sockaddr);
+	unsigned int size = sizeof(from);
 	if((client = accept(socketDescriptor, (struct sockaddr *)from, &size)) == -1)
 	{
 		perror("Accept error");
@@ -79,30 +79,19 @@ bool acceptClient(int &client, int &socketDescriptor, struct sockaddr_in * from)
 	return true;
 }
 
-char * getSHA256Hash(char * str)
-{
-	char hexPassword[64];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	SHA256_CTX sha;
-	SHA256_Init(&sha);
-	SHA256_Update(&sha, str, strlen(str));
-	SHA256_Final(hash, &sha);
-	for(unsigned int index = 0; index < sizeof(hash); ++index)
-		sprintf(hexPassword + 2 * index, "%02x", hash[index]);
-	return hexPassword;
-}
-
 void * solveRequest(void * args)
 {
 	DatabaseQueryParameters * parameters = (DatabaseQueryParameters *)args;
 	int client = *(parameters->getClient());
 	int option;
+	pthread_detach(pthread_self());
 	if(read(client, &option, 4) == -1)
 		readError();
 	if(option == SIGN_UP)
 		signUpServerProcedure(parameters);
 	else
 		signInServerProcedure(parameters);
+	close(client);
 }
 
 int main()
@@ -113,10 +102,10 @@ int main()
 
 	createSocket(socketDescriptor);
 	setServerInformation(server);
-	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
-	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	bindServer(socketDescriptor, &server);
 	listenSocket(socketDescriptor);
+	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
+	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	connectToDatabase(databaseConnection);
 	while(true)
 	{
@@ -127,7 +116,6 @@ int main()
 			continue;
 		DatabaseQueryParameters threadParameters(databaseConnection, &clientSocket, from);
 		pthread_create(&thread, NULL, solveRequest, (void *)&threadParameters);
-		pthread_detach(thread);
 	}
 	return 0;
 }

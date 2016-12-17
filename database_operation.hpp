@@ -52,6 +52,19 @@ void readError();
 
 void writeError();
 
+char * getSHA256Hash(char * str)
+{
+	char * hexPassword = new char[65];
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha;
+	SHA256_Init(&sha);
+	SHA256_Update(&sha, str, strlen(str));
+	SHA256_Final(hash, &sha);
+	for(unsigned int index = 0; index < sizeof(hash); ++index)
+		sprintf(hexPassword + 2 * index, "%02x", hash[index]);
+	return hexPassword;
+}
+
 void databaseConnectionError() {
 	perror("Error while connecting to database...");
 }
@@ -92,23 +105,12 @@ void dropUserAvailableFiles(MYSQL * database, char * id)
 	query(database, sqlCommand);
 }
 
-void sendDownloadPathToClient(MYSQL * database, int &client, char * id)
-{
-	char sqlCommand[100];
-	MYSQL_RES * result;
-	MYSQL_ROW outputRow;
-	sprintf(sqlCommand, "select DownloadPath from UserInfo where id = %d", atoi(id));
-	result = query(database, sqlCommand);
-	outputRow = mysql_fetch_row(result);
-	if(write(client, outputRow[0], strlen(outputRow[0])) == -1)
-		writeError();
-}
-
 void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 {
-	char sqlCommand[100];
+	char sqlCommand[300];
 	char sizeStr[30], fileName[100], fileHash[64];
 	int sizeOfFile, readBytes, sizeOfFileName;
+
 	while((readBytes = read(client, &sizeOfFileName, 4)) > 0 &&
 			(readBytes = read(client, fileName, sizeOfFileName)) > 0 &&
 			(readBytes = read(client, &sizeOfFile, 4)) > 0 &&
@@ -121,10 +123,11 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 		readError();
 }
 
-void insertInUserInfo(MYSQL * database, char username[50], char hashPassword[64], char downloadPath[512])
+void insertInUserInfo(MYSQL * database, char username[50], char password[50])
 {
 	char sqlCommand[1024];
-	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s', '%s')", username, hashPassword, downloadPath);
+	printf("sha password : %s\n", getSHA256Hash(password));
+	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s')", username, getSHA256Hash(password));
 	query(database, sqlCommand);
 }
 

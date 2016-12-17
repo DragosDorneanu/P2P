@@ -102,13 +102,15 @@ void connectToServer(int &servent, struct sockaddr_in &server)
 
 int main()
 {
-	int option, servent, socketDescriptor;
+	int option, servent, socketDescriptor, enableReuse = 1;
 	sockaddr_in superServer, clientServer;
 
 	setSuperServerInfo(superServer);
 	setClientServerInfo(clientServer);
 	createSocket(servent);
 	createSocket(socketDescriptor);
+	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
+	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	bindClientServer(servent, clientServer);
 	listenServent(servent);
 	option = getUserOption();

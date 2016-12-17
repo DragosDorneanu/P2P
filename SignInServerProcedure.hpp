@@ -36,7 +36,6 @@ void successfulLoginProcedure(MYSQL * database, int &client, struct sockaddr_in 
 	loginSuccessMessage(client);
 	updateUserStatus(database, clientInfo, id[0]);
 	dropUserAvailableFiles(database, id[0]);
-	sendDownloadPathToClient(database, client, id[0]);
 	//client must send a list of available files(directory where to look is set at sign up and is called \"DownloadPath\" in Users table)
 	insertUserAvailableFiles(database, client, id[0]);
 }

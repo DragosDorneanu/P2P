@@ -9,6 +9,7 @@
 #define SIGNUPCLIENTPROCEDURE_HPP_
 
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <termios.h>
 #include <unistd.h>
@@ -36,19 +37,26 @@ void readPasswordInHiddenMode(char password[50], unsigned int &size)
 	newTerminal.c_lflag &= ~(ECHO);
 	cout << "Password : ";
 	tcsetattr(fileno(stdin), TCSANOW, &newTerminal);
-	cin >> password;
+	cin.getline(password, 50);
 	tcsetattr(fileno(stdin), TCSANOW, &oldTerminal);
 	cout << endl;
 	size = strlen(password);
 }
 
-void sendUserInfoToServer(int &client, unsigned int userSize, char username[50], unsigned int passwordSize, char password[50], unsigned int pathSize, char path[512])
+void readDownloadPath(char downloadPath[512])
+{
+	ofstream configFile("path.conf");
+	cout << "Valid path to a download/upload directory : ";
+	cin.getline(downloadPath, 512);
+	configFile << downloadPath;
+	configFile.close();
+}
+
+void sendUserInfoToServer(int &client, unsigned int userSize, char username[50], unsigned int passwordSize, char password[50])
 {
 	if(write(client, &userSize, 4) == -1 || write(client, username, userSize) == -1)
 		writeError();
 	if(write(client, &passwordSize, 4) == -1 || write(client, password, passwordSize) == -1)
-		writeError();
-	if(write(client, &pathSize, 4) == -1 || write(client, path, pathSize) == -1)
 		writeError();
 }
 
@@ -141,23 +149,22 @@ bool sendAvailableFilesToServer(int &client, char downloadPath[512])
 void signUpProcedure(int &client)
 {
 	char username[50], password[50], downloadPath[512];
-	unsigned int sizeOfUsername, sizeOfPassword, sizeOfPath, signUpStatus;
+	unsigned int sizeOfUsername, sizeOfPassword, signUpStatus;
 
+	cin.ignore(1, '\n');
 	cout << "Enter username : ";
-	cin >> username;
+	cin.getline(username, 50);
 	sizeOfUsername = strlen(username);
 	readPasswordInHiddenMode(password, sizeOfPassword);
-	cout << "Enter a path to a valid download directory : ";
-	cin.get(downloadPath, 512);
-	sizeOfPath = strlen(downloadPath);
-	sendUserInfoToServer(client, sizeOfUsername, username, sizeOfPassword, password, sizeOfPath, downloadPath);
+	sendUserInfoToServer(client, sizeOfUsername, username, sizeOfPassword, password);
+	readDownloadPath(downloadPath);
 	if(read(client, &signUpStatus, 4) == -1)
 		readError();
 	if(signUpStatus == SIGN_UP_SUCCESS)
 	{
 		if(!sendAvailableFilesToServer(client, downloadPath))
 		{
-			cout << "Invalid download path or error while sharing available files. Other information were successful saved.";
+			cout << "Invalid download path or error while sharing available files. Other information were successful saved." << endl;
 			exit(EXIT_FAILURE);
 		}
 		cout << "You have signed up successful!!!" << endl;
