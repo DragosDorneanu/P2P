@@ -123,7 +123,7 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 		readError();
 }
 
-void insertInUserInfo(MYSQL * database, char username[50], char password[50])
+void insertInUserInfo(MYSQL * database, char * username, char * password)
 {
 	char sqlCommand[1024];
 	printf("sha password : %s\n", getSHA256Hash(password));

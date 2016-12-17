@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define SERVENT_PORT 2048
+#define SERVENT_PORT 0
 #define BACKLOG_SIZE 10
 #define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 1234

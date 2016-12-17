@@ -29,7 +29,7 @@ void signUpSuccessMessage(int &client)
 		writeError();
 }
 
-void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char username[50], char password[50])
+void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char * username, char * password)
 {
 	char sqlCommand[200];
 	MYSQL_RES * queryResult;
@@ -49,7 +49,7 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL * database = parameters->getDatabase();
 	int client = *(parameters->getClient());
 	MYSQL_RES * queryResult;
-	char username[50], password[50], sqlCommand[200];
+	char * username = new char[50], * password = new char[50], sqlCommand[200];
 	unsigned int sizeOfUsername, sizeOfPassword;
 
 	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
