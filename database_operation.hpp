@@ -107,7 +107,7 @@ void dropUserAvailableFiles(MYSQL * database, char * id)
 void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 {
 	char sqlCommand[512];
-	char fileName[100], fileHash[256];
+	char fileName[100], fileHash[65];
 	int sizeOfFile, readBytes, sizeOfFileName, idValue, hashSize;
 
 	idValue = atoi(id);
@@ -136,7 +136,7 @@ void insertInUserInfo(MYSQL * database, char * username, char * password)
 void insertInUserStatus(MYSQL * database, struct sockaddr_in clientInfo)
 {
 	char sqlCommand[100];
-	sprintf(sqlCommand, "insert into UserStatus value (NULL, 'offline', '%s')", inet_ntoa(clientInfo.sin_addr));
+	sprintf(sqlCommand, "insert into UserStatus value (NULL, 'offline', '%s', %d)", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
 	query(database, sqlCommand);
 }
 

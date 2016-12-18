@@ -70,9 +70,9 @@ bool statFile(struct stat &fileStatus, char path[512])
 	return true;
 }
 
-bool hashFile(char * file, char fileHash[256])
+bool hashFile(char * file, char fileHash[65])
 {
-	unsigned char shaData[65];
+	unsigned char shaData[SHA256_DIGEST_LENGTH];
 	char data[1025];
 	unsigned int bytes;
 	SHA256_CTX sha;
@@ -84,7 +84,7 @@ bool hashFile(char * file, char fileHash[256])
 	while((bytes = fread(data, 1, 1024, toHashFile)) != 0)
 		SHA256_Update(&sha, data, bytes);
 	SHA256_Final(shaData, &sha);
-	for(bytes = 0; bytes < sizeof(shaData); ++bytes)
+	for(bytes = 0; bytes < SHA256_DIGEST_LENGTH; ++bytes)
 		sprintf(fileHash + 2 * bytes, "%02x", shaData[bytes]);
 	return true;
 }
@@ -107,7 +107,7 @@ bool listDirectory(int &client, char * currentDirectory)
 	dirent * file;
 	unsigned int size, hashSize;
 	struct stat fileStatus;
-	char newPath[512], fileHash[256];
+	char newPath[512], fileHash[65];
 
 	if((directory = opendir(currentDirectory)) == NULL)
 		return false;
