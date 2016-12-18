@@ -34,6 +34,7 @@ void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in 
 	char sqlCommand[200];
 	MYSQL_RES * queryResult;
 	MYSQL_ROW id;
+	int idValue;
 
 	signUpSuccessMessage(client);
 	insertInUserInfo(database, username, password);
@@ -41,7 +42,8 @@ void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in 
 	sprintf(sqlCommand, "select id from UserInfo where username = '%s'", username);
 	queryResult = query(database, sqlCommand);
 	id = mysql_fetch_row(queryResult);
-	insertUserAvailableFiles(database, client, id[0]);
+	idValue = atoi(id[0]);
+	insertUserAvailableFiles(database, client, idValue);
 }
 
 void signUpServerProcedure(DatabaseQueryParameters * parameters)
@@ -49,7 +51,7 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL * database = parameters->getDatabase();
 	int client = *(parameters->getClient());
 	MYSQL_RES * queryResult;
-	char * username = new char[50], * password = new char[50], sqlCommand[200];
+	char username[50], password[50], sqlCommand[200];
 	unsigned int sizeOfUsername, sizeOfPassword;
 	pthread_mutex_t dbLock;
 

@@ -33,11 +33,11 @@ void loginSuccessMessage(int &client)
 
 void successfulLoginProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, MYSQL_ROW id)
 {
+	int idValue = atoi(id[0]);
 	loginSuccessMessage(client);
-	updateUserStatus(database, clientInfo, id[0]);
-	dropUserAvailableFiles(database, id[0]);
-	//client must send a list of available files(directory where to look is set at sign up and is called \"DownloadPath\" in Users table)
-	insertUserAvailableFiles(database, client, id[0]);
+	updateUserStatus(database, clientInfo, idValue);
+	dropUserAvailableFiles(database, idValue);
+	insertUserAvailableFiles(database, client, idValue);
 }
 
 void signInServerProcedure(DatabaseQueryParameters * parameters)
@@ -48,11 +48,14 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	char username[50], password[50], sqlCommand[200];
 	unsigned int sizeOfUsername, sizeOfPassword;
 
-	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 || read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
+	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
+			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
 	{
 		loginFailMessage(client);
 		readError();
 	}
+	username[sizeOfUsername] = '\0';
+	password[sizeOfPassword] = '\0';
 	sprintf(sqlCommand, "select id from UsersInfo where username = '%s' and password = '%s'", username, getSHA256Hash(password));
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult))

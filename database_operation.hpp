@@ -48,9 +48,13 @@ public:
 	}
 };
 
-void readError();
+void readError() {
+	perror("Read error");
+}
 
-void writeError();
+void writeError() {
+	perror("Write error");
+}
 
 char * getSHA256Hash(char * str)
 {
@@ -84,33 +88,33 @@ void connectToDatabase(MYSQL *& databaseConnection)
 
 MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
+	printf("SQL : %s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
 		databaseQueryError();
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);
 	return queryResult;
 }
 
-void updateUserStatus(MYSQL * database, struct sockaddr_in clientInfo, char * id)
+void updateUserStatus(MYSQL * database, struct sockaddr_in clientInfo, int id)
 {
 	char sqlCommand[100];
-	sprintf(sqlCommand, "update UserStatus set status = 'online', ip = '%s' where id = %d", inet_ntoa(clientInfo.sin_addr), atoi(id));
+	sprintf(sqlCommand, "update UserStatus set status = 'online', ip = '%s', port = %d where id = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port, id);
 	query(database, sqlCommand);
 }
 
-void dropUserAvailableFiles(MYSQL * database, char * id)
+void dropUserAvailableFiles(MYSQL * database, int id)
 {
 	char sqlCommand[100];
-	sprintf(sqlCommand, "delete from Files where id = %d", atoi(id));
+	sprintf(sqlCommand, "delete from Files where id = %d", id);
 	query(database, sqlCommand);
 }
 
-void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
+void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 {
 	char sqlCommand[512];
 	char fileName[100], fileHash[65];
-	int sizeOfFile, readBytes, sizeOfFileName, idValue, hashSize;
+	int sizeOfFile, readBytes, sizeOfFileName, hashSize;
 
-	idValue = atoi(id);
 	while((readBytes = read(client, &sizeOfFileName, 4)) > 0 &&
 			(readBytes = read(client, fileName, sizeOfFileName)) > 0 &&
 			(readBytes = read(client, &sizeOfFile, 4)) > 0 &&
@@ -119,7 +123,7 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 	{
 		fileName[sizeOfFileName] = '\0';
 		fileHash[hashSize] = '\0';
-		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", idValue, fileName, sizeOfFile, fileHash);
+		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", id, fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);
 	}
 	if(readBytes == -1)

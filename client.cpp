@@ -24,18 +24,6 @@ using namespace std;
 #define SIGN_IN_ERROR 4
 #define SIGN_IN_SUCCESS 5
 
-void readError()
-{
-	perror("Read Error");
-	exit(EXIT_FAILURE);
-}
-
-void writeError()
-{
-	perror("Write Error");
-	exit(EXIT_FAILURE);
-}
-
 int getUserOption()
 {
 	int option;
@@ -119,7 +107,7 @@ int main()
 	if(option == 1)
 		signUpProcedure(socketDescriptor);
 	else
-		signInProcedure();
+		signInProcedure(socketDescriptor);
 	close(socketDescriptor);
 	return 0;
 }

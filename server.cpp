@@ -25,14 +25,6 @@
 
 using namespace std;
 
-void readError() {
-	perror("Read Error");
-}
-
-void writeError() {
-	perror("Write Error");
-}
-
 void createSocket(int &socketDescriptor)
 {
 	if((socketDescriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1)
