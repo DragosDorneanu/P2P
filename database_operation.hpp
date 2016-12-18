@@ -109,13 +109,14 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 {
 	char sqlCommand[512];
 	char fileName[100], fileHash[256];
-	int sizeOfFile, readBytes, sizeOfFileName, idValue;
+	int sizeOfFile, readBytes, sizeOfFileName, idValue, hashSize;
 
 	idValue = atoi(id);
 	while((readBytes = read(client, &sizeOfFileName, 4)) > 0 &&
 			(readBytes = read(client, fileName, sizeOfFileName)) > 0 &&
 			(readBytes = read(client, &sizeOfFile, 4)) > 0 &&
-			(readBytes = read(client, fileHash, 64)) > 0)
+			(readBytes = read(client, &hashSize, 4)) > 0 &&
+			(readBytes = read(client, fileHash, hashSize)) > 0)
 	{
 		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", idValue, fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);

@@ -41,7 +41,6 @@ int getUserOption()
 	int option;
 	do
 	{
-		cout << "Wrong option" << endl;
 		cout << "1. Sign up" << endl;
 		cout << "2. Sign in" << endl;
 		cout << "Select 1 or 2..." << endl;

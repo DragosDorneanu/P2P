@@ -70,7 +70,7 @@ bool statFile(struct stat &fileStatus, char path[512])
 	return true;
 }
 
-bool hashFile(char * file, char fileHash[65])
+bool hashFile(char * file, char fileHash[256])
 {
 	unsigned char shaData[65];
 	char data[1025];
@@ -101,45 +101,44 @@ bool listDirectory(int &client, char * currentDirectory)
 {
 	DIR * directory;
 	dirent * file;
-	unsigned int size;
+	unsigned int size, hashSize;
 	struct stat fileStatus;
 	char newPath[512], fileHash[256];
 
-	if((directory = opendir(currentDirectory)) != NULL)
+	if((directory = opendir(currentDirectory)) == NULL)
+		return false;
+	while((file = readdir(directory)) != NULL)
 	{
-		while((file = readdir(directory)) != NULL)
+		if(!isHiddenFile(file))
 		{
-			if(!isHiddenFile(file))
+			sprintf(newPath, "%s/%s", currentDirectory, file->d_name);
+			if(isDirectory(file))
 			{
-				if(isDirectory(file))
+				if(!listDirectory(client, newPath))
 				{
-						if(!listDirectory(client, newPath))
-						{
-							closedir(directory);
-							return false;
-						}
-				}
-				else
-				{
-					size = strlen(file->d_name);
-					if(write(client, &size, 4) == -1 || write(client, file->d_name, size) == -1)
-						writeError();
-					sprintf(newPath, currentDirectory, "%s/%s", file->d_name);
-					if(!statFile(fileStatus, newPath))
-						return false;
-					if(write(client, &fileStatus.st_size, 4) == -1)
-						writeError();
-					if(!hashFile(newPath, fileHash))
-						return false;
-					if(write(client, fileHash, 64) == -1)
-						writeError();
+					closedir(directory);
+					return false;
 				}
 			}
+			else
+			{
+				size = strlen(file->d_name);
+				if(write(client, &size, 4) == -1 || write(client, file->d_name, size) == -1)
+					writeError();
+				if(!statFile(fileStatus, newPath))
+					return false;
+				if(write(client, &fileStatus.st_size, 4) == -1)
+					writeError();
+				if(!hashFile(newPath, fileHash))
+					return false;
+				hashSize = strlen(fileHash);
+				if(write(client, &hashSize, 4) == -1 || write(client, fileHash, hashSize) == -1)
+					writeError();
+			}
 		}
-		closedir(directory);
-		return true;
 	}
-	return false;
+	closedir(directory);
+	return true;
 }
 
 bool sendAvailableFilesToServer(int &client, char downloadPath[512])
