@@ -43,7 +43,7 @@ void signInProcedure(int &client)
 	}
 	else
 	{
-		cout << "Sign in failed!!! There is no user that matches..." << endl;
+		cout << "Sign in failed!!! Wrong username or password..." << endl;
 		exit(EXIT_FAILURE);
 	}
 }

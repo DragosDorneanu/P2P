@@ -56,7 +56,7 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	}
 	username[sizeOfUsername] = '\0';
 	password[sizeOfPassword] = '\0';
-	sprintf(sqlCommand, "select id from UsersInfo where username = '%s' and password = '%s'", username, getSHA256Hash(password));
+	sprintf(sqlCommand, "select id from UserInfo where username = '%s' and password = '%s'", username, getSHA256Hash(password));
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult))
 		successfulLoginProcedure(database, client, parameters->getClientInfo(), mysql_fetch_row(queryResult));

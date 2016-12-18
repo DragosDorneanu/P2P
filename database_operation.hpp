@@ -88,7 +88,6 @@ void connectToDatabase(MYSQL *& databaseConnection)
 
 MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
-	printf("SQL : %s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
 		databaseQueryError();
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);
