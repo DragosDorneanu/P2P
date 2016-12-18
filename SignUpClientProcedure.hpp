@@ -97,6 +97,10 @@ bool isDirectory(struct dirent * file) {
 	return file->d_type == DT_DIR;
 }
 
+bool isFifo(struct dirent * file) {
+	return file->d_type == DT_FIFO;
+}
+
 bool listDirectory(int &client, char * currentDirectory)
 {
 	DIR * directory;
@@ -120,7 +124,7 @@ bool listDirectory(int &client, char * currentDirectory)
 					return false;
 				}
 			}
-			else
+			else if(!isFifo(file))
 			{
 				size = strlen(file->d_name);
 				if(write(client, &size, 4) == -1 || write(client, file->d_name, size) == -1)
@@ -164,6 +168,7 @@ void signUpProcedure(int &client)
 		readError();
 	if(signUpStatus == SIGN_UP_SUCCESS)
 	{
+		cout << "Sharing your available files. This could take a while because of the size of your directory..." << endl;
 		if(!sendAvailableFilesToServer(client, downloadPath))
 		{
 			cout << "Invalid download path or error while sharing available files. Other information were successful saved." << endl;

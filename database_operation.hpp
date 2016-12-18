@@ -84,7 +84,6 @@ void connectToDatabase(MYSQL *& databaseConnection)
 
 MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
-	printf("SQL : %s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
 		databaseQueryError();
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);
@@ -118,6 +117,8 @@ void insertUserAvailableFiles(MYSQL * database, int &client, char * id)
 			(readBytes = read(client, &hashSize, 4)) > 0 &&
 			(readBytes = read(client, fileHash, hashSize)) > 0)
 	{
+		fileName[sizeOfFileName] = '\0';
+		fileHash[hashSize] = '\0';
 		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", idValue, fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);
 	}

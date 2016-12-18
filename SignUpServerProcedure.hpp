@@ -63,8 +63,8 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 		signUpFailMessage(client);
 		readError();
 	}
-	printf("USERNAME : %s\n", username);
-	printf("PASSWORD : %s\n", password);
+	username[sizeOfUsername] = '\0';
+	password[sizeOfPassword] = '\0';
 	sprintf(sqlCommand, "select username from UserInfo where username = '%s'", username);
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult) == 0)
