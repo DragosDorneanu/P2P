@@ -16,7 +16,7 @@
 
 using namespace std;
 
-int FunctionArray::client = 0;
+int FunctionArray::client = 1;
 int FunctionArray::DELETE = 130;
 int FunctionArray::DOWNLOAD = 131;
 int FunctionArray::FIND = 132;
