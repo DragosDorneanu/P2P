@@ -14,6 +14,13 @@
 #include <unistd.h>
 #include "FunctionArray.hpp"
 
+#define DELETE 128
+#define DOWNLOAD 129
+#define FIND 130
+#define PAUSE 131
+#define START 132
+#define QUIT 133
+
 using namespace std;
 
 int FunctionArray::client = 0;
@@ -47,23 +54,39 @@ int FunctionArray::getTokenID(char token[MAX_COMMAND_SIZE])
 
 void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 {
-	//send number of find criteria
-	//send defines corresponding to the search criteria
-	//send the name of the searched file
-	//read results that come from the server
 	int id;
-	char * p = strtok(command, " ");
-	while(p)
+	char * p, * fileName;
+	unsigned int fileNameSize;
+	vector<int> option;
+
+	if(write(client, &FIND, 4) == -1)
+		writeError();
+	p = strtok(command, " ");
+	while(p && p[0] == '-')
 	{
 		if((id = getTokenID(p)) == -1)
 		{
 			cout << "Unrecognized token : " << p << endl;
 			return;
 		}
-		if(write(client, &id, 4) == -1)
-			writeError();
+		option.push_back(id);
 		p = strtok(NULL, " ");
 	}
+	fileName = p;
+	p = strtok(NULL, "\n");
+	if(p != NULL)
+		strcat(fileName, p);
+	fileNameSize = strlen(fileName);
+	if(write(client, &option.size(), 4) == -1)
+		writeError();
+	for(unsigned int index = 0; index < option.size(); ++index)
+	{
+		if(write(client, &option[index], 4) == -1)
+			writeError();
+	}
+	if(write(client, &fileNameSize, 4) == -1 || write(client, fileName, fileNameSize) == -1)
+			writeError();
+	//receive info from server
 }
 
 void FunctionArray::pause(char command[MAX_COMMAND_SIZE]) { }
@@ -72,7 +95,7 @@ void FunctionArray::start(char command[MAX_COMMAND_SIZE]) { }
 
 FunctionArray::FunctionArray(int clientSD)
 {
-	this->function.push_back(make_pair("delete", download));
+	this->function.push_back(make_pair("delete", deleteFromActiveList));
 	this->function.push_back(make_pair("download", download));
 	this->function.push_back(make_pair("find", find));
 	this->function.push_back(make_pair("pause", pause));
