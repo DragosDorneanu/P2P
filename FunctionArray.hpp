@@ -24,8 +24,10 @@ private:
 	static int client;
 	vector<FUNCTION> function;
 	multiset<ACTIVE_OBJECT> activeList;
+	static int DELETE, DOWNLOAD, FIND, PAUSE, START, QUIT;
 
 	static int getTokenID(char token[MAX_COMMAND_SIZE]);
+	static void sendInfoToServer(void * data, unsigned int dataSize);
 	static void find(char command[MAX_COMMAND_SIZE]);
 	static void download(char command[MAX_COMMAND_SIZE]);
 	static void pause(char command[MAX_COMMAND_SIZE]);

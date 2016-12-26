@@ -14,16 +14,15 @@
 #include <unistd.h>
 #include "FunctionArray.hpp"
 
-#define DELETE 128
-#define DOWNLOAD 129
-#define FIND 130
-#define PAUSE 131
-#define START 132
-#define QUIT 133
-
 using namespace std;
 
 int FunctionArray::client = 0;
+int FunctionArray::DELETE = 130;
+int FunctionArray::DOWNLOAD = 131;
+int FunctionArray::FIND = 132;
+int FunctionArray::PAUSE = 133;
+int FunctionArray::START = 134;
+int FunctionArray::QUIT = 135;
 
 void FunctionArray::writeError()
 {
@@ -37,6 +36,12 @@ void FunctionArray::readError()
 	exit(EXIT_FAILURE);
 }
 
+void FunctionArray::sendInfoToServer(void * data, unsigned int dataSize)
+{
+	if(write(client, data, dataSize) == -1)
+		writeError();
+}
+
 void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE]) { }
 
 void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
@@ -47,20 +52,18 @@ void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 	exit(EXIT_SUCCESS);
 }
 
-int FunctionArray::getTokenID(char token[MAX_COMMAND_SIZE])
-{
+int FunctionArray::getTokenID(char token[MAX_COMMAND_SIZE]) {
 	return -1;
 }
 
 void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 {
-	int id;
+	int id, readBytes;
 	char * p, * fileName;
-	unsigned int fileNameSize;
+	unsigned int fileNameSize, optionCount;
 	vector<int> option;
 
-	if(write(client, &FIND, 4) == -1)
-		writeError();
+	sendInfoToServer(&FIND, 4);
 	p = strtok(command, " ");
 	while(p && p[0] == '-')
 	{
@@ -77,16 +80,17 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 	if(p != NULL)
 		strcat(fileName, p);
 	fileNameSize = strlen(fileName);
-	if(write(client, &option.size(), 4) == -1)
-		writeError();
+	optionCount = option.size();
+	sendInfoToServer(&optionCount, 4);
 	for(unsigned int index = 0; index < option.size(); ++index)
-	{
-		if(write(client, &option[index], 4) == -1)
-			writeError();
-	}
-	if(write(client, &fileNameSize, 4) == -1 || write(client, fileName, fileNameSize) == -1)
-			writeError();
-	//receive info from server
+		sendInfoToServer(&option[index], 4);
+	sendInfoToServer(&fileNameSize, 4);
+	sendInfoToServer(fileName, fileNameSize);
+	while((readBytes = read(client, &fileNameSize, 4)) > 0 &&
+			(readBytes = read(client, fileName, fileNameSize)) > 0)
+		cout << fileName << endl;
+	if(readBytes == -1)
+		readError();
 }
 
 void FunctionArray::pause(char command[MAX_COMMAND_SIZE]) { }
