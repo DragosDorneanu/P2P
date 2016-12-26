@@ -90,7 +90,7 @@ void * solveRequest(void * args)
 int main()
 {
 	int socketDescriptor, enableReuse = 1;
-	struct sockaddr_in server, from;
+	struct sockaddr_in server;
 	MYSQL * databaseConnection;
 
 	createSocket(socketDescriptor);
@@ -100,9 +100,11 @@ int main()
 	bindServer(socketDescriptor, &server);
 	listenSocket(socketDescriptor);
 	connectToDatabase(databaseConnection);
+
 	while(true)
 	{
 		int clientSocket;
+		struct sockaddr_in from;
 		pthread_t thread;
 		cout << "Waiting for a client to connect..." << endl;
 		if(!acceptClient(clientSocket, socketDescriptor, &from))
