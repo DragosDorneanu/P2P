@@ -14,6 +14,11 @@
 #include <unistd.h>
 #include "FunctionArray.hpp"
 
+#define SEARCH_BY_SIZE 20
+#define SEARCH_BY_TYPE 21
+#define SEARCH_BY_NAME 22
+#define OPTION pair<int, string>
+
 using namespace std;
 
 int FunctionArray::client = 1;
@@ -48,20 +53,36 @@ void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
 
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
+	sendInfoToServer(&QUIT, 4);
 	cout << "Good bye" << endl;
 	exit(EXIT_SUCCESS);
 }
 
-int FunctionArray::getTokenID(char token[MAX_COMMAND_SIZE]) {
+bool isDigit(char ch) {
+	return (ch >= '1' && ch <= '9');
+}
+
+bool isLetter(char ch) {
+	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
+}
+
+int FunctionArray::getTokenID(char token[MAX_COMMAND_SIZE])
+{
+	if(strcmp(token, "-n") == 0)
+		return SEARCH_BY_NAME;
+	else if(strcmp(token, "-t") == 0)
+		return SEARCH_BY_TYPE;
+	if(strcmp(token, "-s") == 0)
+		return SEARCH_BY_SIZE;
 	return -1;
 }
 
 void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 {
 	int id, readBytes;
-	char * p, * fileName;
-	unsigned int fileNameSize, optionCount;
-	vector<int> option;
+	char * p, * fileName = new char;
+	unsigned int fileNameSize, optionCount, restrictionSize;
+	vector<OPTION> option;
 
 	sendInfoToServer(&FIND, 4);
 	p = strtok(command, " ");
@@ -72,25 +93,45 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 			cout << "Unrecognized token : " << p << endl;
 			return;
 		}
-		option.push_back(id);
+		if(id != SEARCH_BY_NAME)
+		{
+			p = strtok(NULL, " ");
+			if(p == NULL || p[0] == '-' || (id == SEARCH_BY_SIZE && !isDigit(p[0])) || (id == SEARCH_BY_TYPE && !isLetter(p[0])))
+			{
+				cout << "Wrong arguments" << endl;
+				return;
+			}
+			option.push_back(make_pair(id, p));
+		}
 		p = strtok(NULL, " ");
 	}
-	fileName = p;
-	p = strtok(NULL, "\n");
 	if(p != NULL)
-		strcat(fileName, p);
-	fileNameSize = strlen(fileName);
-	optionCount = option.size();
-	sendInfoToServer(&optionCount, 4);
-	for(unsigned int index = 0; index < option.size(); ++index)
-		sendInfoToServer(&option[index], 4);
-	sendInfoToServer(&fileNameSize, 4);
-	sendInfoToServer(fileName, fileNameSize);
-	while((readBytes = read(client, &fileNameSize, 4)) > 0 &&
-			(readBytes = read(client, fileName, fileNameSize)) > 0)
-		cout << fileName << endl;
-	if(readBytes == -1)
-		readError();
+	{
+		strcpy(fileName, p);
+		p = strtok(NULL, "\n");
+		if(p != NULL)
+			strcat(fileName, p);
+		fileNameSize = strlen(fileName);
+		optionCount = option.size();
+		sendInfoToServer(&optionCount, 4);
+		for(unsigned int index = 0; index < option.size(); ++index)
+		{
+			sendInfoToServer(&option[index].first, 4);
+			if(option[index].first != SEARCH_BY_NAME)
+			{
+				restrictionSize = option[index].second.size();
+				sendInfoToServer(&restrictionSize, 4);
+				sendInfoToServer(&option[index].second, restrictionSize);
+			}
+		}
+		sendInfoToServer(&fileNameSize, 4);
+		sendInfoToServer(fileName, fileNameSize);
+		while((readBytes = read(client, fileName, fileNameSize)) > 0 && (readBytes = read(client, &fileNameSize, 4)) > 0)
+			cout << fileName << endl;
+		if(readBytes == -1)
+			readError();
+	}
+	else cout << "A file name is needed..." << endl;
 }
 
 void FunctionArray::pause(char command[MAX_COMMAND_SIZE]) { }
