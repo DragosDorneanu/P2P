@@ -81,15 +81,15 @@ void findProcedure(int &client, MYSQL * database)
 	if(read(client, &fileNameSize, 4) == -1 || read(client, fileName, fileNameSize) == -1)
 		readError();
 	if(searchByName)
-		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where fileName = '%s'", fileName);
+		sprintf(sqlCommand, "select FileName, size, HashValue from Files where fileName = '%s'", fileName);
 	else
-		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where instr(fileName, '%s') > 0", fileName);
+		sprintf(sqlCommand, "select FileName, size, HashValue from Files where instr(fileName, '%s') > 0", fileName);
 	strcat(sqlCommand, conditions);
 	result = query(database, sqlCommand);
 	while((row = mysql_fetch_row(result)))
 	{
 		columnSize = strlen(row[0]);
-		if(write(client, &row[0], columnSize) == -1 || write(client, &row[1], 4) == -1)
+		if(write(client, &columnSize, 4) == -1 || write(client, &row[0], columnSize) == -1 || write(client, &row[1], 4) == -1)
 			writeError();
 	}
 }

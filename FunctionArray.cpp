@@ -66,7 +66,7 @@ bool isLetter(char ch) {
 	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
 }
 
-int FunctionArray::getTokenID(char token[MAX_COMMAND_SIZE])
+int getTokenID(char token[MAX_COMMAND_SIZE])
 {
 	if(strcmp(token, "-n") == 0)
 		return SEARCH_BY_NAME;
@@ -81,7 +81,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 {
 	int id, readBytes;
 	char * p, * fileName = new char;
-	unsigned int fileNameSize, optionCount, restrictionSize;
+	unsigned int fileNameSize, optionCount, restrictionSize, size;
 	vector<OPTION> option;
 
 	sendInfoToServer(&FIND, 4);
@@ -126,8 +126,10 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 		}
 		sendInfoToServer(&fileNameSize, 4);
 		sendInfoToServer(fileName, fileNameSize);
-		while((readBytes = read(client, fileName, fileNameSize)) > 0 && (readBytes = read(client, &fileNameSize, 4)) > 0)
-			cout << fileName << endl;
+		while((readBytes = read(client, &fileNameSize, 4)) == -1 ||
+				(readBytes = read(client, fileName, fileNameSize)) > 0 ||
+				(readBytes = read(client, &size, 4)) > 0)
+			cout << fileName << "   " << size << "bytes" << endl;
 		if(readBytes == -1)
 			readError();
 	}
