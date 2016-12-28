@@ -54,7 +54,7 @@ void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
 	sendInfoToServer(&QUIT, 4);
-	cout << "Good bye" << endl;
+	cout << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
 
@@ -146,8 +146,8 @@ FunctionArray::FunctionArray(int clientSD)
 	this->function.push_back(make_pair("download", download));
 	this->function.push_back(make_pair("find", find));
 	this->function.push_back(make_pair("pause", pause));
-	this->function.push_back(make_pair("start", start));
 	this->function.push_back(make_pair("quit", quit));
+	this->function.push_back(make_pair("start", start));
 }
 
 FunctionArray::~FunctionArray() { }

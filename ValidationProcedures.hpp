@@ -17,6 +17,7 @@
 #include <openssl/sha.h>
 #include <cstring>
 #include <cstdlib>
+#include <sys/file.h>
 
 using namespace std;
 
@@ -68,15 +69,18 @@ bool hashFile(char * file, char fileHash[65])
 {
 	unsigned char shaData[SHA256_DIGEST_LENGTH];
 	char data[5121];
-	unsigned int bytes;
+	int bytes, toHashFile;
 	SHA256_CTX sha;
-	FILE * toHashFile = fopen(file, "rb");
 
-	if(toHashFile == NULL)
+	if((toHashFile = open(file, O_RDONLY, 0600)) == -1)
 		return false;
+	flock(toHashFile, LOCK_EX);
 	SHA256_Init(&sha);
-	while((bytes = fread(data, 1, 5120, toHashFile)) != 0)
+	while((bytes = read(toHashFile, data, 5120)) > 0)
 		SHA256_Update(&sha, data, bytes);
+	if(bytes == -1)
+		readError();
+	flock(toHashFile, LOCK_UN);
 	SHA256_Final(shaData, &sha);
 	for(bytes = 0; bytes < SHA256_DIGEST_LENGTH; ++bytes)
 		sprintf(fileHash + 2 * bytes, "%02x", shaData[bytes]);
