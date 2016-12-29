@@ -32,8 +32,8 @@ int FunctionArray::QUIT = 135;
 
 void setSignalError()
 {
-		perror("Error while setting signal handler");
-		exit(EXIT_FAILURE);
+	perror("Error while setting signal handler");
+	exit(EXIT_FAILURE);
 }
 
 void FunctionArray::quitSignalHandler(int signal)
