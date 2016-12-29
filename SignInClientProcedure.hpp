@@ -63,7 +63,7 @@ void signInProcedure(int &client)
 	{
 		listDirectory(client, downloadPath);
 		markEndOfFileSharing(client);
-		cout << "You have signed in successful!!!" << endl;
+		cout << "You have signed in successfully!!!" << endl;
 		commandPrompt(commandArray);
 	}
 	else

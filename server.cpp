@@ -14,6 +14,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <openssl/sha.h>
+
 #include "database_operation.hpp"
 #include "SignInServerProcedure.hpp"
 #include "SignUpServerProcedure.hpp"

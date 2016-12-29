@@ -51,13 +51,12 @@ void downloadProcedure(int &client, MYSQL * database) { }
 void findProcedure(int &client, MYSQL * database)
 {
 	bool searchByName = false;
-	unsigned int optionCount, option, restrictionSize, fileNameSize, columnSize;
-	char sqlCommand[1024], restriction[30], sqlCondition[512], *fileName, *end, conditions[] = "\0";
+	int  fileNameSize;
+	unsigned int optionCount, option, restrictionSize, size;
+	char sqlCommand[1024], restriction[100], sqlCondition[512], fileName[1024], conditions[] = "\0";
 	MYSQL_RES * result;
 	MYSQL_ROW row;
 
-	fileName = new char;
-	end = new char;
 	if(read(client, &optionCount, 4) == -1)
 		readError();
 	for(unsigned int i = 0; i < optionCount; ++i)
@@ -68,36 +67,46 @@ void findProcedure(int &client, MYSQL * database)
 		{
 			 if(read(client, &restrictionSize, 4) == -1 && read(client, restriction, restrictionSize) == -1)
 				 readError();
+			 printf("%d %s\n", restrictionSize, restriction);
+			 restriction[restrictionSize] = '\0';
 			 if(option == SEARCH_BY_TYPE)
 			 {
 				 strcpy(sqlCondition, " and fileName like '%");
-				 strcat(restriction, "'");
+				 strcat(sqlCondition, restriction);
+				 strcat(sqlCondition, "'");
 			 }
-			 else sprintf(sqlCondition, " and size = %ld", strtol(restriction, &end, 10));
+			 else sprintf(sqlCondition, " and size = %d", atoi(restriction));
 			 strcat(conditions, sqlCondition);
+			 sqlCondition[0] = '\0';
+			 restriction[0] = '\0';
 		}
 		else searchByName = true;
 	}
 	if(read(client, &fileNameSize, 4) == -1 || read(client, fileName, fileNameSize) == -1)
 		readError();
+	fileName[fileNameSize] = '\0';
 	if(searchByName)
-		sprintf(sqlCommand, "select FileName, size, HashValue from Files where fileName = '%s'", fileName);
+		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where fileName = '%s'", fileName);
 	else
-		sprintf(sqlCommand, "select FileName, size, HashValue from Files where instr(fileName, '%s') > 0", fileName);
+		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where instr(fileName, '%s') > 0", fileName);
 	strcat(sqlCommand, conditions);
 	result = query(database, sqlCommand);
 	while((row = mysql_fetch_row(result)))
 	{
-		columnSize = strlen(row[0]);
-		if(write(client, &columnSize, 4) == -1 || write(client, &row[0], columnSize) == -1 || write(client, &row[1], 4) == -1)
+		fileNameSize = strlen(row[0]);
+		size = strlen(row[1]);
+		if(write(client, &fileNameSize, 4) == -1 || write(client, row[0], fileNameSize) == -1 ||
+				write(client, &size, 4) == -1 || write(client, row[1], size) == -1)
 			writeError();
 	}
+	fileNameSize = -1;
+	if(write(client, &fileNameSize, 4) == -1)
+		writeError();
 }
 
 void quitProcedure(MYSQL * database, char * clientIP)
 {
 	char sqlCommand[200];
-	printf("%s\n", clientIP);
 	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s'", clientIP);
 	query(database, sqlCommand);
 }
@@ -111,7 +120,7 @@ void receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo)
 		{
 		case DOWNLOAD : downloadProcedure(client, database); break;
 		case FIND : findProcedure(client, database); break;
-		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr)); printf("QUIT\n"); return;
+		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr)); return;
 		default : ;
 		}
 	}

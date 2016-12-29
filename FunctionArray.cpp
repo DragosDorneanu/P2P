@@ -53,12 +53,14 @@ void FunctionArray::setSignalHandler()
 
 void FunctionArray::writeError()
 {
+	sendInfoToServer(&QUIT, 4);
 	perror("Write error");
 	exit(EXIT_FAILURE);
 }
 
 void FunctionArray::readError()
 {
+	sendInfoToServer(&QUIT, 4);
 	perror("Read error");
 	exit(EXIT_FAILURE);
 }
@@ -85,7 +87,7 @@ bool isDigit(char ch) {
 }
 
 bool isLetter(char ch) {
-	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
+	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '.');
 }
 
 int getTokenID(char token[MAX_COMMAND_SIZE])
@@ -101,9 +103,9 @@ int getTokenID(char token[MAX_COMMAND_SIZE])
 
 void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 {
-	int id, readBytes;
-	char * p, * fileName = new char;
-	unsigned int fileNameSize, optionCount, restrictionSize, size;
+	int id, readBytes, fileNameSize;
+	char * p, fileName[1024], size[12];
+	unsigned int optionCount, restrictionSize, sizeDigits;
 	vector<OPTION> option;
 
 	sendInfoToServer(&FIND, 4);
@@ -149,10 +151,17 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 		}
 		sendInfoToServer(&fileNameSize, 4);
 		sendInfoToServer(fileName, fileNameSize);
-		while((readBytes = read(client, &fileNameSize, 4)) == -1 ||
-				(readBytes = read(client, fileName, fileNameSize)) > 0 ||
-				(readBytes = read(client, &size, 4)) > 0)
-			cout << fileName << "   " << size << "bytes" << endl;
+		while((readBytes = read(client, &fileNameSize, 4)) > 0 &&
+				fileNameSize != -1 &&
+				(readBytes = read(client, fileName, fileNameSize)) > 0 &&
+				(readBytes = read(client, &sizeDigits, 4)) > 0 &&
+				(readBytes = read(client, &size, sizeDigits)) > 0)
+		{
+			fileName[fileNameSize] = '\0';
+			size[sizeDigits] = '\0';
+			cout << fileName << "   " << size << " bytes" << endl;
+		}
+		cout << endl;
 		if(readBytes == -1)
 			readError();
 	}
