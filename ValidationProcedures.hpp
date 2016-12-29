@@ -143,6 +143,13 @@ bool listDirectory(int &client, char * currentDirectory)
 	return true;
 }
 
+void markEndOfFileSharing(int &client)
+{
+	int endOfFileSharing = -1;
+	if(write(client, &endOfFileSharing, 4) == -1)
+		writeError();
+}
+
 bool sendAvailableFilesToServer(int &client, char downloadPath[512])
 {
 	if(!listDirectory(client, downloadPath))

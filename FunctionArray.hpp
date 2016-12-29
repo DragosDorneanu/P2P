@@ -35,6 +35,7 @@ private:
 	static void quit(char command[MAX_COMMAND_SIZE]);
 	static void readError();
 	static void writeError();
+	static void quitSignalHandler(int signal);
 
 public:
 	FunctionArray(int clientSD);
@@ -44,6 +45,7 @@ public:
 	int exists(string commandArray, int lowerBound, int upperBound);
 	void execute(unsigned int functionIndex, char command[MAX_COMMAND_SIZE]);
 	static void setClient(int clientSD);
+	static void setSignalHandler();
 };
 
 #endif /* FUNCTIONARRAY_HPP_ */

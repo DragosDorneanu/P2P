@@ -12,12 +12,13 @@
 #include <cstdlib>
 #include <cstdio>
 #include <unistd.h>
+#include <signal.h>
 #include "FunctionArray.hpp"
 
 #define SEARCH_BY_SIZE 20
 #define SEARCH_BY_TYPE 21
 #define SEARCH_BY_NAME 22
-#define OPTION pair<int, string>
+#define OPTION pair<int, char *>
 
 using namespace std;
 
@@ -28,6 +29,27 @@ int FunctionArray::FIND = 132;
 int FunctionArray::PAUSE = 133;
 int FunctionArray::START = 134;
 int FunctionArray::QUIT = 135;
+
+void setSignalError()
+{
+		perror("Error while setting signal handler");
+		exit(EXIT_FAILURE);
+}
+
+void FunctionArray::quitSignalHandler(int signal)
+{
+	sendInfoToServer(&QUIT, 4);
+	cout << "Good bye!" << endl;
+	exit(EXIT_SUCCESS);
+}
+
+void FunctionArray::setSignalHandler()
+{
+	if(signal(SIGINT, quitSignalHandler) == SIG_ERR)
+		setSignalError();
+	if(signal(SIGHUP, quitSignalHandler) == SIG_ERR)
+		setSignalError();
+}
 
 void FunctionArray::writeError()
 {
@@ -54,7 +76,7 @@ void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
 	sendInfoToServer(&QUIT, 4);
-	cout << "Good bye!" << endl;
+	cout << endl << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
 
@@ -103,6 +125,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 			}
 			option.push_back(make_pair(id, p));
 		}
+		else option.push_back(make_pair(id, new char));
 		p = strtok(NULL, " ");
 	}
 	if(p != NULL)
@@ -119,7 +142,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 			sendInfoToServer(&option[index].first, 4);
 			if(option[index].first != SEARCH_BY_NAME)
 			{
-				restrictionSize = option[index].second.size();
+				restrictionSize = strlen(option[index].second);
 				sendInfoToServer(&restrictionSize, 4);
 				sendInfoToServer(&option[index].second, restrictionSize);
 			}

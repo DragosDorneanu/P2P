@@ -115,6 +115,7 @@ void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 	int sizeOfFile, readBytes, sizeOfFileName, hashSize;
 
 	while((readBytes = read(client, &sizeOfFileName, 4)) > 0 &&
+			sizeOfFileName > 0 &&
 			(readBytes = read(client, fileName, sizeOfFileName)) > 0 &&
 			(readBytes = read(client, &sizeOfFile, 4)) > 0 &&
 			(readBytes = read(client, &hashSize, 4)) > 0 &&

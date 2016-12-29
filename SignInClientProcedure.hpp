@@ -49,6 +49,7 @@ void signInProcedure(int &client)
 	FunctionArray commandArray(client);
 
 	commandArray.setClient(client);
+	commandArray.setSignalHandler();
 	cin.ignore(1, '\n');
 	cout << "Username : ";
 	cin.getline(username, 50);
@@ -61,6 +62,7 @@ void signInProcedure(int &client)
 	if(signinStatus == SIGN_IN_SUCCESS)
 	{
 		listDirectory(client, downloadPath);
+		markEndOfFileSharing(client);
 		cout << "You have signed in successful!!!" << endl;
 		commandPrompt(commandArray);
 	}

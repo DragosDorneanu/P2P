@@ -94,21 +94,30 @@ void findProcedure(int &client, MYSQL * database)
 	}
 }
 
-void receiveRequests(int &client, MYSQL * database)
+void quitProcedure(MYSQL * database, char * clientIP)
 {
-	unsigned int requestType;
-	while(true)
+	char sqlCommand[200];
+	printf("%s\n", clientIP);
+	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s'", clientIP);
+	query(database, sqlCommand);
+}
+
+void receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo)
+{
+	int readStatus, requestType;
+	while((readStatus = read(client, &requestType, 4)) > 0)
 	{
-		if(read(client, &requestType, 4) == -1)
-		readError();
 		switch(requestType)
 		{
 		case DOWNLOAD : downloadProcedure(client, database); break;
 		case FIND : findProcedure(client, database); break;
-		case QUIT : return;
+		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr)); printf("QUIT\n"); return;
 		default : ;
 		}
 	}
+	if(readStatus == -1)
+		readError();
+
 }
 
 void signInServerProcedure(DatabaseQueryParameters * parameters)
@@ -132,7 +141,8 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	if(mysql_num_rows(queryResult))
 	{
 		successfulLoginProcedure(database, client, parameters->getClientInfo(), mysql_fetch_row(queryResult));
-		receiveRequests(client, database);
+		receiveRequests(client, database, parameters->getClientInfo());
+		close(client);
 	}
 	else loginFailMessage(client);
 }
