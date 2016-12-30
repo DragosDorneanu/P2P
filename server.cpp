@@ -13,9 +13,8 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <unistd.h>
-#include <openssl/sha.h>
 
-#include "database_operation.hpp"
+#include "DatabaseQueryParameters.hpp"
 #include "SignInServerProcedure.hpp"
 #include "SignUpServerProcedure.hpp"
 

@@ -14,49 +14,22 @@
 #include <cstdlib>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <openssl/sha.h>
 
 #define HOST "localhost"
 #define PASSWORD "password"
 #define USER "root"
 #define DB "P2P"
 
-class DatabaseQueryParameters
-{
-private:
-	MYSQL * database;
-	int * client;
-	struct sockaddr_in clientInfo;
-
-public:
-	DatabaseQueryParameters(MYSQL * database, int * client, struct sockaddr_in clientInfo)
-	{
-		this->database = database;
-		this->client = client;
-		this->clientInfo = clientInfo;
-	}
-
-	MYSQL * getDatabase() {
-		return this->database;
-	}
-
-	int * getClient() {
-		return this->client;
-	}
-
-	struct sockaddr_in getClientInfo() {
-		return this->clientInfo;
-	}
-};
-
-void readError() {
+inline void readError() {
 	perror("Read error");
 }
 
-void writeError() {
+inline void writeError() {
 	perror("Write error");
 }
 
-char * getSHA256Hash(char * str)
+inline char * getSHA256Hash(char * str)
 {
 	char * hexPassword = new char[65];
 	unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -69,15 +42,15 @@ char * getSHA256Hash(char * str)
 	return hexPassword;
 }
 
-void databaseConnectionError() {
+inline void databaseConnectionError() {
 	perror("Error while connecting to database...");
 }
 
-void databaseQueryError() {
+inline void databaseQueryError() {
 	perror("Query error");
 }
 
-void connectToDatabase(MYSQL *& databaseConnection)
+inline void connectToDatabase(MYSQL *& databaseConnection)
 {
 	databaseConnection = mysql_init(NULL);
 	if(databaseConnection == NULL)
@@ -86,7 +59,7 @@ void connectToDatabase(MYSQL *& databaseConnection)
 		databaseConnectionError();
 }
 
-MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
+inline MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
 	//if(sqlInstruction[0] != 'i')
 		//printf("%s\n", sqlInstruction);
@@ -96,21 +69,21 @@ MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 	return queryResult;
 }
 
-void updateUserStatus(MYSQL * database, struct sockaddr_in clientInfo, int id)
+inline void updateUserStatus(MYSQL * database, struct sockaddr_in clientInfo, int id)
 {
 	char sqlCommand[100];
 	sprintf(sqlCommand, "update UserStatus set status = 'online', ip = '%s', port = %d where id = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port, id);
 	query(database, sqlCommand);
 }
 
-void dropUserAvailableFiles(MYSQL * database, int id)
+inline void dropUserAvailableFiles(MYSQL * database, int id)
 {
 	char sqlCommand[100];
 	sprintf(sqlCommand, "delete from Files where id = %d", id);
 	query(database, sqlCommand);
 }
 
-void insertUserAvailableFiles(MYSQL * database, int &client, int id)
+inline void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 {
 	char sqlCommand[512];
 	char fileName[100], fileHash[65];
@@ -132,21 +105,21 @@ void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 		readError();
 }
 
-void insertInUserInfo(MYSQL * database, char * username, char * password)
+inline void insertInUserInfo(MYSQL * database, char * username, char * password)
 {
 	char sqlCommand[1024];
 	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s')", username, getSHA256Hash(password));
 	query(database, sqlCommand);
 }
 
-void insertInUserStatus(MYSQL * database, struct sockaddr_in clientInfo)
+inline void insertInUserStatus(MYSQL * database, struct sockaddr_in clientInfo)
 {
 	char sqlCommand[100];
 	sprintf(sqlCommand, "insert into UserStatus value (NULL, 'offline', '%s', %d)", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
 	query(database, sqlCommand);
 }
 
-void setAllClientsOffline(MYSQL * database)
+inline void setAllClientsOffline(MYSQL * database)
 {
 	char sqlCommand[30];
 	sprintf(sqlCommand, "update UserStatus set status = 'offline'");
