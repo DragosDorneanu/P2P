@@ -68,7 +68,7 @@ void signInProcedure(int &client)
 	}
 	else
 	{
-		cout << "Sign in failed!!! Wrong username or password..." << endl;
+		cout << "Sign in failed!!! Wrong username, password or you are already signed in..." << endl;
 		exit(EXIT_FAILURE);
 	}
 }

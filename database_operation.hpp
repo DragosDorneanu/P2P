@@ -146,4 +146,11 @@ void insertInUserStatus(MYSQL * database, struct sockaddr_in clientInfo)
 	query(database, sqlCommand);
 }
 
+void setAllClientsOffline(MYSQL * database)
+{
+	char sqlCommand[30];
+	sprintf(sqlCommand, "update UserStatus set status = 'offline'");
+	query(database, sqlCommand);
+}
+
 #endif /* DATABASE_OPERATION_HPP_ */

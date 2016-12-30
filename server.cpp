@@ -101,6 +101,7 @@ int main()
 	bindServer(socketDescriptor, &server);
 	listenSocket(socketDescriptor);
 	connectToDatabase(databaseConnection);
+	setAllClientsOffline(databaseConnection);
 
 	while(true)
 	{

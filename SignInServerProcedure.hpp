@@ -10,6 +10,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include "database_operation.hpp"
 
 #define SIGN_IN_ERROR 4
@@ -56,26 +57,27 @@ void findProcedure(int &client, MYSQL * database)
 	char sqlCommand[1024], restriction[100], sqlCondition[512], fileName[1024], conditions[] = "\0";
 	MYSQL_RES * result;
 	MYSQL_ROW row;
+	std::ofstream queries("query.out");
 
 	if(read(client, &optionCount, 4) == -1)
 		readError();
 	for(unsigned int i = 0; i < optionCount; ++i)
 	{
 		if(read(client, &option, 4) == -1)
+		{
 			readError();
+			return;
+		}
 		if(option != SEARCH_BY_NAME)
 		{
-			 if(read(client, &restrictionSize, 4) == -1 && read(client, restriction, restrictionSize) == -1)
+			 if(read(client, &restrictionSize, 4) == -1 || read(client, restriction, restrictionSize) == -1)
 				 readError();
 			 printf("%d %s\n", restrictionSize, restriction);
 			 restriction[restrictionSize] = '\0';
 			 if(option == SEARCH_BY_TYPE)
-			 {
-				 strcpy(sqlCondition, " and fileName like '%");
-				 strcat(sqlCondition, restriction);
-				 strcat(sqlCondition, "'");
-			 }
-			 else sprintf(sqlCondition, " and size = %d", atoi(restriction));
+				 sprintf(sqlCondition, "%s%s%s", " and FileName like '%", restriction, "'");
+			 else
+				 sprintf(sqlCondition, " and size = %d", atoi(restriction));
 			 strcat(conditions, sqlCondition);
 			 sqlCondition[0] = '\0';
 			 restriction[0] = '\0';
@@ -86,10 +88,11 @@ void findProcedure(int &client, MYSQL * database)
 		readError();
 	fileName[fileNameSize] = '\0';
 	if(searchByName)
-		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where fileName = '%s'", fileName);
+		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where FileName = '%s'", fileName);
 	else
-		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where instr(fileName, '%s') > 0", fileName);
+		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where instr(FileName, '%s') > 0", fileName);
 	strcat(sqlCommand, conditions);
+	queries << sqlCommand << std::endl;
 	result = query(database, sqlCommand);
 	while((row = mysql_fetch_row(result)))
 	{
@@ -114,6 +117,8 @@ void quitProcedure(MYSQL * database, char * clientIP)
 void receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo)
 {
 	int readStatus, requestType;
+	char sqlCommand[200];
+
 	while((readStatus = read(client, &requestType, 4)) > 0)
 	{
 		switch(requestType)
@@ -124,6 +129,8 @@ void receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo)
 		default : ;
 		}
 	}
+	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s'", inet_ntoa(clientInfo.sin_addr));
+	query(database, sqlCommand);
 	if(readStatus == -1)
 		readError();
 
@@ -134,7 +141,7 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL * database = parameters->getDatabase();
 	int client = *(parameters->getClient());
 	MYSQL_RES * queryResult;
-	char username[50], password[50], sqlCommand[200];
+	char username[50], password[50], sqlCommand[300];
 	unsigned int sizeOfUsername, sizeOfPassword;
 
 	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
@@ -145,7 +152,8 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	}
 	username[sizeOfUsername] = '\0';
 	password[sizeOfPassword] = '\0';
-	sprintf(sqlCommand, "select id from UserInfo where username = '%s' and password = '%s'", username, getSHA256Hash(password));
+	sprintf(sqlCommand, "select id from UserInfo where username = '%s' and password = '%s' and id in (select id from UserStatus where status = 'offline')",
+			username, getSHA256Hash(password));
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult))
 	{

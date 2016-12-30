@@ -47,8 +47,6 @@ void FunctionArray::setSignalHandler()
 {
 	if(signal(SIGINT, quitSignalHandler) == SIG_ERR)
 		setSignalError();
-	if(signal(SIGHUP, quitSignalHandler) == SIG_ERR)
-		setSignalError();
 }
 
 void FunctionArray::writeError()
@@ -83,7 +81,7 @@ void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 }
 
 bool isDigit(char ch) {
-	return (ch >= '1' && ch <= '9');
+	return (ch >= '0' && ch <= '9');
 }
 
 bool isLetter(char ch) {
@@ -146,7 +144,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 			{
 				restrictionSize = strlen(option[index].second);
 				sendInfoToServer(&restrictionSize, 4);
-				sendInfoToServer(&option[index].second, restrictionSize);
+				sendInfoToServer(option[index].second, restrictionSize);
 			}
 		}
 		sendInfoToServer(&fileNameSize, 4);
