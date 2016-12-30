@@ -106,7 +106,6 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 	unsigned int optionCount, restrictionSize, sizeDigits;
 	vector<OPTION> option;
 
-	sendInfoToServer(&FIND, 4);
 	p = strtok(command, " ");
 	while(p && p[0] == '-')
 	{
@@ -130,6 +129,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 	}
 	if(p != NULL)
 	{
+		sendInfoToServer(&FIND, 4);
 		strcpy(fileName, p);
 		p = strtok(NULL, "\n");
 		if(p != NULL)

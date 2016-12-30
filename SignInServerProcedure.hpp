@@ -63,10 +63,7 @@ void findProcedure(int &client, MYSQL * database)
 	for(unsigned int i = 0; i < optionCount; ++i)
 	{
 		if(read(client, &option, 4) == -1)
-		{
 			readError();
-			return;
-		}
 		if(option != SEARCH_BY_NAME)
 		{
 			 if(read(client, &restrictionSize, 4) == -1 || read(client, restriction, restrictionSize) == -1)
