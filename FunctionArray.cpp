@@ -18,6 +18,9 @@
 #define SEARCH_BY_SIZE 20
 #define SEARCH_BY_TYPE 21
 #define SEARCH_BY_NAME 22
+#define SEARCH_BY_BIGGER_SIZE 23
+#define SEARCH_BY_SMALLER_SIZE 24
+
 #define OPTION pair<int, char *>
 
 using namespace std;
@@ -96,6 +99,10 @@ int getTokenID(char token[MAX_COMMAND_SIZE])
 		return SEARCH_BY_TYPE;
 	if(strcmp(token, "-s") == 0)
 		return SEARCH_BY_SIZE;
+	if(strcmp(token, "-bs") == 0)
+		return SEARCH_BY_BIGGER_SIZE;
+	if(strcmp(token, "-ss") == 0)
+		return SEARCH_BY_SMALLER_SIZE;
 	return -1;
 }
 
@@ -117,14 +124,18 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 		if(id != SEARCH_BY_NAME)
 		{
 			p = strtok(NULL, " ");
-			if(p == NULL || p[0] == '-' || (id == SEARCH_BY_SIZE && !isDigit(p[0])) || (id == SEARCH_BY_TYPE && !isLetter(p[0])))
+			if(p == NULL || p[0] == '-' ||
+				(id == SEARCH_BY_SIZE && !isDigit(p[0])) ||
+				(id == SEARCH_BY_TYPE && !isLetter(p[0])) ||
+				(id == SEARCH_BY_BIGGER_SIZE && !isDigit(p[0])) ||
+				(id == SEARCH_BY_SMALLER_SIZE && !isDigit(p[0])))
 			{
 				cout << "Wrong arguments" << endl;
 				return;
 			}
 			option.push_back(make_pair(id, p));
 		}
-		else option.push_back(make_pair(id, new char));
+		else option.push_back(make_pair(id, (char *)(NULL)));
 		p = strtok(NULL, " ");
 	}
 	if(p != NULL)

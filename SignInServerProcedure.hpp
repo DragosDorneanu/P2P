@@ -20,6 +20,8 @@
 #define SEARCH_BY_SIZE 20
 #define SEARCH_BY_TYPE 21
 #define SEARCH_BY_NAME 22
+#define SEARCH_BY_BIGGER_SIZE 23
+#define SEARCH_BY_SMALLER_SIZE 24
 
 char * getSHA256Hash(char * str);
 
@@ -68,12 +70,15 @@ void findProcedure(int &client, MYSQL * database)
 		{
 			 if(read(client, &restrictionSize, 4) == -1 || read(client, restriction, restrictionSize) == -1)
 				 readError();
-			 printf("%d %s\n", restrictionSize, restriction);
 			 restriction[restrictionSize] = '\0';
 			 if(option == SEARCH_BY_TYPE)
 				 sprintf(sqlCondition, "%s%s%s", " and FileName like '\%", restriction, "'");
-			 else
+			 else if(option == SEARCH_BY_SIZE)
 				 sprintf(sqlCondition, " and size = %d", atoi(restriction));
+			 else if(option == SEARCH_BY_BIGGER_SIZE)
+				 sprintf(sqlCondition, " and size > %d", atoi(restriction));
+			 else
+				 sprintf(sqlCondition, " and size < %d", atoi(restriction));
 			 if(conditions[0] == '\0')
 				 strcpy(conditions, sqlCondition);
 			 else
