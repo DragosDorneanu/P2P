@@ -88,8 +88,8 @@ void connectToDatabase(MYSQL *& databaseConnection)
 
 MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
-	if(sqlInstruction[0] != 'i')
-		printf("%s\n", sqlInstruction);
+	//if(sqlInstruction[0] != 'i')
+		//printf("%s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
 		databaseQueryError();
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);

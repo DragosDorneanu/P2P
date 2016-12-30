@@ -10,7 +10,6 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
 #include "database_operation.hpp"
 
 #define SIGN_IN_ERROR 4
@@ -54,11 +53,11 @@ void findProcedure(int &client, MYSQL * database)
 	bool searchByName = false;
 	int  fileNameSize;
 	unsigned int optionCount, option, restrictionSize, size;
-	char sqlCommand[1024], restriction[100], sqlCondition[512], fileName[1024], conditions[] = "\0";
+	char sqlCommand[1024], restriction[100], sqlCondition[512], fileName[1024], conditions[512];
 	MYSQL_RES * result;
 	MYSQL_ROW row;
-	std::ofstream queries("query.out");
 
+	conditions[0] = '\0';
 	if(read(client, &optionCount, 4) == -1)
 		readError();
 	for(unsigned int i = 0; i < optionCount; ++i)
@@ -75,10 +74,13 @@ void findProcedure(int &client, MYSQL * database)
 			 printf("%d %s\n", restrictionSize, restriction);
 			 restriction[restrictionSize] = '\0';
 			 if(option == SEARCH_BY_TYPE)
-				 sprintf(sqlCondition, "%s%s%s", " and FileName like '%", restriction, "'");
+				 sprintf(sqlCondition, "%s%s%s", " and FileName like '\%", restriction, "'");
 			 else
 				 sprintf(sqlCondition, " and size = %d", atoi(restriction));
-			 strcat(conditions, sqlCondition);
+			 if(conditions[0] == '\0')
+				 strcpy(conditions, sqlCondition);
+			 else
+				 strcat(conditions, sqlCondition);
 			 sqlCondition[0] = '\0';
 			 restriction[0] = '\0';
 		}
@@ -92,7 +94,6 @@ void findProcedure(int &client, MYSQL * database)
 	else
 		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where instr(FileName, '%s') > 0", fileName);
 	strcat(sqlCommand, conditions);
-	queries << sqlCommand << std::endl;
 	result = query(database, sqlCommand);
 	while((row = mysql_fetch_row(result)))
 	{

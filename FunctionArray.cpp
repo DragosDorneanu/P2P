@@ -39,7 +39,7 @@ void setSignalError()
 void FunctionArray::quitSignalHandler(int signal)
 {
 	sendInfoToServer(&QUIT, 4);
-	cout << "Good bye!" << endl;
+	cout << endl << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
 
@@ -76,7 +76,7 @@ void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
 	sendInfoToServer(&QUIT, 4);
-	cout << endl << "Good bye!" << endl;
+	cout << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
 
