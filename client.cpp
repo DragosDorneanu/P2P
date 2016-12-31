@@ -17,13 +17,6 @@
 
 using namespace std;
 
-#define SERVENT_PORT 0
-#define BACKLOG_SIZE 10
-#define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 1234
-#define SIGN_IN_ERROR 4
-#define SIGN_IN_SUCCESS 5
-
 int getUserOption()
 {
 	int option;
@@ -37,9 +30,18 @@ int getUserOption()
 	return option;
 }
 
-void createSocket(int &client)
+void createTCPSocket(int &client)
 {
 	if((client = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	{
+		perror("Error while creating socket...");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void createUDPSocket(int &servent)
+{
+	if((servent = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 	{
 		perror("Error while creating socket...");
 		exit(EXIT_FAILURE);
@@ -69,15 +71,6 @@ void bindClientServer(int &servent, struct sockaddr_in &clientServer)
 	}
 }
 
-void listenServent(int &servent)
-{
-	if(listen(servent, BACKLOG_SIZE) == -1)
-	{
-		perror("Listen error");
-		exit(EXIT_FAILURE);
-	}
-}
-
 void connectToServer(int &servent, struct sockaddr_in &server)
 {
 	if(connect(servent, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
@@ -94,20 +87,20 @@ int main()
 
 	setSuperServerInfo(superServer);
 	setClientServerInfo(clientServer);
-	createSocket(servent);
-	createSocket(socketDescriptor);
+	createTCPSocket(socketDescriptor);
+	createUDPSocket(servent);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	bindClientServer(servent, clientServer);
-	listenServent(servent);
 	option = getUserOption();
 	connectToServer(socketDescriptor, superServer);
+
 	if(write(socketDescriptor, &option, 4) == -1)
 		writeError();
 	if(option == 1)
 		signUpProcedure(socketDescriptor);
 	else
-		signInProcedure(socketDescriptor);
+		signInProcedure(socketDescriptor, servent);
 	close(socketDescriptor);
 	return 0;
 }

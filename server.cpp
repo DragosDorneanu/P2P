@@ -85,6 +85,7 @@ void * solveRequest(void * args)
 		signInServerProcedure(parameters);
 	close(client);
 	mysql_thread_end();
+	return (void *)(NULL);
 }
 
 int main()

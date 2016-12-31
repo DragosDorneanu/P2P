@@ -22,7 +22,7 @@ int * DatabaseQueryParameters::getClient() {
 	return this->client;
 }
 
-struct sockaddr_in DatabaseQueryParameters::getClientInfo() {
+sockaddr_in DatabaseQueryParameters::getClientInfo() {
 	return this->clientInfo;
 }
 

@@ -9,20 +9,26 @@
 #define SIGNINCLIENTPROCEDURE_HPP_
 
 #include <iostream>
+#include <fstream>
 #include <termios.h>
 #include <cstring>
 #include <fstream>
 #include <cstdlib>
+#include <pthread.h>
 
 #include "ValidationProcedures.hpp"
 #include "FunctionArray.hpp"
 
+#define SERVENT_PORT 0
+#define BACKLOG_SIZE 10
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 1234
 #define SIGN_IN_ERROR 4
 #define SIGN_IN_SUCCESS 5
 
 using namespace std;
 
-void commandPrompt(FunctionArray commandArray)
+void commandPrompt(FunctionArray * commandArray)
 {
 	string commandName;
 	char command[MAX_COMMAND_SIZE];
@@ -31,24 +37,51 @@ void commandPrompt(FunctionArray commandArray)
 	cout << endl << "p2p> ";
 	while(cin >> commandName)
 	{
-		if((functionIndex = commandArray.exists(commandName, 0, commandArray.size() - 1)) != -1)
+		if((functionIndex = commandArray->exists(commandName, 0, commandArray->size() - 1)) != -1)
 		{
 			cin.getline(command, MAX_COMMAND_SIZE);
-			commandArray.execute(functionIndex, command);
+			commandArray->execute(functionIndex, command);
 		}
 		else cout << "Command does not exist..." << endl;
 		cout << "p2p> ";
 	}
 }
 
-void signInProcedure(int &client)
+void * makeRequests(void * args)
+{
+	FunctionArray * commandArray = (FunctionArray *)(args);
+	commandPrompt(commandArray);
+	return (void *)(NULL);
+}
+
+void * acceptDownloadRequests(void * args)
+{
+	int servent, readBytes;
+	char * buffer = new char;
+	unsigned int fromSize = sizeof(sockaddr);
+	sockaddr_in from;
+	FunctionArray * commandArray = (FunctionArray *)(args);
+
+	servent = commandArray->getServent();
+	while((readBytes = recvfrom(servent, buffer, 1024, 0 , (sockaddr *)&from, &fromSize)) > 0)
+	{
+
+	}
+	if(readBytes == -1)
+		readError();
+	return (void *)(NULL);
+}
+
+void signInProcedure(int &client, int &servent)
 {
 	char username[50], password[50], downloadPath[512];
 	unsigned int usernameSize, passwordSize, signinStatus;
 	ifstream configFile("path.conf");
-	FunctionArray commandArray(client);
+	FunctionArray commandArray;
+	pthread_t makeRequestThread, acceptDownloadRequestThread;
 
 	commandArray.setClient(client);
+	commandArray.setServent(servent);
 	commandArray.setSignalHandler();
 	cin.ignore(1, '\n');
 	cout << "Username : ";
@@ -64,7 +97,10 @@ void signInProcedure(int &client)
 		listDirectory(client, downloadPath);
 		markEndOfFileSharing(client);
 		cout << "You have signed in successfully!!!" << endl;
-		commandPrompt(commandArray);
+		pthread_create(&makeRequestThread, NULL, makeRequests, (void *)&commandArray);
+		pthread_create(&acceptDownloadRequestThread, NULL, acceptDownloadRequests, (void *)&commandArray);
+		pthread_join(makeRequestThread, (void **)NULL);
+		pthread_join(acceptDownloadRequestThread, (void **)NULL);
 	}
 	else
 	{

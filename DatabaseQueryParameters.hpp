@@ -16,14 +16,14 @@ class DatabaseQueryParameters
 private:
 	MYSQL * database;
 	int * client;
-	struct sockaddr_in clientInfo;
+	sockaddr_in clientInfo;
 
 public:
 	DatabaseQueryParameters(MYSQL * database, int * client, struct sockaddr_in clientInfo);
 	virtual ~DatabaseQueryParameters();
 	MYSQL * getDatabase();
 	int * getClient();
-	struct sockaddr_in getClientInfo();
+	sockaddr_in getClientInfo();
 };
 
 #endif /* DATABASEQUERYPARAMETERS_HPP_ */

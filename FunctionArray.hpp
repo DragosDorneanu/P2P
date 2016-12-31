@@ -21,7 +21,7 @@ using namespace std;
 class FunctionArray
 {
 private:
-	static int client;
+	static int client, servent;
 	vector<FUNCTION> function;
 	multiset<ACTIVE_OBJECT> activeList;
 	static int DELETE, DOWNLOAD, FIND, PAUSE, START, QUIT;
@@ -38,14 +38,16 @@ private:
 	static void quitSignalHandler(int signal);
 
 public:
-	FunctionArray(int clientSD);
+	FunctionArray();
 	virtual ~FunctionArray();
 	unsigned int size();
 	string getName(unsigned int index);
 	int exists(string commandArray, int lowerBound, int upperBound);
 	void execute(unsigned int functionIndex, char command[MAX_COMMAND_SIZE]);
 	static void setClient(int clientSD);
+	static void setServent(int serventSD);
 	static void setSignalHandler();
+	static int getServent();
 };
 
 #endif /* FUNCTIONARRAY_HPP_ */

@@ -181,7 +181,7 @@ void FunctionArray::pause(char command[MAX_COMMAND_SIZE]) { }
 
 void FunctionArray::start(char command[MAX_COMMAND_SIZE]) { }
 
-FunctionArray::FunctionArray(int clientSD)
+FunctionArray::FunctionArray()
 {
 	this->function.push_back(make_pair("delete", deleteFromActiveList));
 	this->function.push_back(make_pair("download", download));
@@ -222,4 +222,12 @@ void FunctionArray::execute(unsigned int functionIndex, char command[MAX_COMMAND
 
 void FunctionArray::setClient(int clientSD) {
 	client = clientSD;
+}
+
+void FunctionArray::setServent(int serventSD) {
+	servent = serventSD;
+}
+
+int FunctionArray::getServent() {
+	return servent;
 }
