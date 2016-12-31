@@ -15,6 +15,8 @@
 #include <fstream>
 #include <cstdlib>
 #include <pthread.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 #include "ValidationProcedures.hpp"
 #include "FunctionArray.hpp"

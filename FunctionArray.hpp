@@ -24,7 +24,7 @@ private:
 	static int client, servent;
 	vector<FUNCTION> function;
 	multiset<ACTIVE_OBJECT> activeList;
-	static int DELETE, DOWNLOAD, FIND, PAUSE, START, QUIT;
+	static short DELETE, DOWNLOAD, FIND, PAUSE, START, QUIT;
 
 	static void sendInfoToServer(void * data, unsigned int dataSize);
 	static void find(char command[MAX_COMMAND_SIZE]);

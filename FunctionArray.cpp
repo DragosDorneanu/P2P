@@ -26,12 +26,13 @@
 using namespace std;
 
 int FunctionArray::client = 1;
-int FunctionArray::DELETE = 130;
-int FunctionArray::DOWNLOAD = 131;
-int FunctionArray::FIND = 132;
-int FunctionArray::PAUSE = 133;
-int FunctionArray::START = 134;
-int FunctionArray::QUIT = 135;
+int FunctionArray::servent = 1;
+short FunctionArray::DELETE = 130;
+short FunctionArray::DOWNLOAD = 131;
+short FunctionArray::FIND = 132;
+short FunctionArray::PAUSE = 133;
+short FunctionArray::START = 134;
+short FunctionArray::QUIT = 135;
 
 void setSignalError()
 {
@@ -41,7 +42,7 @@ void setSignalError()
 
 void FunctionArray::quitSignalHandler(int signal)
 {
-	sendInfoToServer(&QUIT, 4);
+	sendInfoToServer(&QUIT, 2);
 	cout << endl << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
@@ -54,14 +55,14 @@ void FunctionArray::setSignalHandler()
 
 void FunctionArray::writeError()
 {
-	sendInfoToServer(&QUIT, 4);
+	sendInfoToServer(&QUIT, 2);
 	perror("Write error");
 	exit(EXIT_FAILURE);
 }
 
 void FunctionArray::readError()
 {
-	sendInfoToServer(&QUIT, 4);
+	sendInfoToServer(&QUIT, 2);
 	perror("Read error");
 	exit(EXIT_FAILURE);
 }
@@ -78,7 +79,7 @@ void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
 
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
-	sendInfoToServer(&QUIT, 4);
+	sendInfoToServer(&QUIT, 2);
 	cout << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
@@ -140,7 +141,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 	}
 	if(p != NULL)
 	{
-		sendInfoToServer(&FIND, 4);
+		sendInfoToServer(&FIND, 2);
 		strcpy(fileName, p);
 		p = strtok(NULL, "\n");
 		if(p != NULL)

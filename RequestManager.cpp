@@ -93,10 +93,10 @@ void RequestManager::quitProcedure(MYSQL * database, char * clientIP)
 
 void RequestManager::receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo)
 {
-	int readStatus, requestType;
+	short readStatus, requestType;
 	char sqlCommand[200];
 
-	while((readStatus = read(client, &requestType, 4)) > 0)
+	while((readStatus = read(client, &requestType, 2)) > 0)
 	{
 		switch(requestType)
 		{
