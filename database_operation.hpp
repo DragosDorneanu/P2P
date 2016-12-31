@@ -64,7 +64,10 @@ inline MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 	//if(sqlInstruction[0] != 'i')
 		//printf("%s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
+	{
+		printf("%s\n", sqlInstruction);
 		databaseQueryError();
+	}
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);
 	return queryResult;
 }
@@ -85,7 +88,7 @@ inline void dropUserAvailableFiles(MYSQL * database, int id)
 
 inline void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 {
-	char sqlCommand[512];
+	char sqlCommand[512], sqlExistFileCommand[512], sqlInsertFileID[512];
 	char fileName[100], fileHash[65];
 	int sizeOfFile, readBytes, sizeOfFileName, hashSize;
 
@@ -98,8 +101,15 @@ inline void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 	{
 		fileName[sizeOfFileName] = '\0';
 		fileHash[hashSize] = '\0';
+		sprintf(sqlExistFileCommand, "select * from FileID where HashValue = '%s'", fileHash);
+		if(mysql_num_rows(query(database, sqlExistFileCommand)) == 0)
+		{
+			sprintf(sqlInsertFileID, "insert into FileID value ('%s', NULL)", fileHash);
+			query(database, sqlInsertFileID);
+		}
 		sprintf(sqlCommand, "insert into Files value (%d, '%s', %d, '%s')", id, fileName, sizeOfFile, fileHash);
 		query(database, sqlCommand);
+
 	}
 	if(readBytes == -1)
 		readError();

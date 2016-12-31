@@ -24,13 +24,13 @@ private:
 	static int client, servent;
 	vector<FUNCTION> function;
 	multiset<ACTIVE_OBJECT> activeList;
-	static short DELETE, DOWNLOAD, FIND, PAUSE, START, QUIT;
+	static short DELETE, DOWNLOAD, FIND, PAUSE, RESUME, QUIT;
 
 	static void sendInfoToServer(void * data, unsigned int dataSize);
 	static void find(char command[MAX_COMMAND_SIZE]);
-	static void download(char command[MAX_COMMAND_SIZE]);
+	static void download(char fileID[MAX_COMMAND_SIZE]);
 	static void pause(char command[MAX_COMMAND_SIZE]);
-	static void start(char command[MAX_COMMAND_SIZE]);
+	static void resume(char command[MAX_COMMAND_SIZE]);
 	static void deleteFromActiveList(char command[MAX_COMMAND_SIZE]);
 	static void quit(char command[MAX_COMMAND_SIZE]);
 	static void readError();

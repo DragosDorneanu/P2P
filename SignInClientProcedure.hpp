@@ -45,7 +45,7 @@ void commandPrompt(FunctionArray * commandArray)
 			commandArray->execute(functionIndex, command);
 		}
 		else cout << "Command does not exist..." << endl;
-		cout << "p2p> ";
+		cout << endl << "p2p> ";
 	}
 }
 

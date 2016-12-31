@@ -31,7 +31,7 @@ short FunctionArray::DELETE = 130;
 short FunctionArray::DOWNLOAD = 131;
 short FunctionArray::FIND = 132;
 short FunctionArray::PAUSE = 133;
-short FunctionArray::START = 134;
+short FunctionArray::RESUME = 134;
 short FunctionArray::QUIT = 135;
 
 void setSignalError()
@@ -73,23 +73,59 @@ void FunctionArray::sendInfoToServer(void * data, unsigned int dataSize)
 		writeError();
 }
 
+bool isDigit(char ch) {
+	return (ch >= '0' && ch <= '9');
+}
+
+bool isLetter(char ch) {
+	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
+}
+
+bool isPunctuationSign(char ch) {
+	return (!isDigit(ch) && !isLetter(ch));
+}
+
 void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE]) { }
 
-void FunctionArray::download(char command[MAX_COMMAND_SIZE]) { }
+bool containsNonDigit(char * str, unsigned int size)
+{
+	for(unsigned int index = 1; index < size; ++index)
+	{
+		if(isLetter(str[index]) || isPunctuationSign(str[index]))
+			return true;
+	}
+	return false;
+}
+
+void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
+{
+	int readBytes, ipSize;
+	char peerIP[15];
+	unsigned int idSize, peerPort;
+
+	cout << endl;
+	idSize = strlen(fileID);
+	if(idSize > 0 && !containsNonDigit(fileID, idSize))
+	{
+		sendInfoToServer(&DOWNLOAD, 2);
+		sendInfoToServer(&idSize, 4);
+		sendInfoToServer(fileID, idSize);
+		while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
+				(readBytes = read(client, peerIP, ipSize)) > 0 &&
+				(readBytes = read(client, &peerPort, 4)) > 0)
+		{
+			peerIP[ipSize] = '\0';
+			cout << peerIP << "     " << peerPort << endl;
+		}
+	}
+	else cout << "Wrong arguments : ID must contain only digits and must have size greater than 0" << endl;
+}
 
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
 	sendInfoToServer(&QUIT, 2);
 	cout << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
-}
-
-bool isDigit(char ch) {
-	return (ch >= '0' && ch <= '9');
-}
-
-bool isLetter(char ch) {
-	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '.');
 }
 
 int getTokenID(char token[MAX_COMMAND_SIZE])
@@ -110,10 +146,11 @@ int getTokenID(char token[MAX_COMMAND_SIZE])
 void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 {
 	int id, readBytes, fileNameSize;
-	char * p, fileName[1024], size[12];
-	unsigned int optionCount, restrictionSize, sizeDigits;
+	char * p, fileName[1024];
+	unsigned int optionCount, restrictionSize, size, hashID;
 	vector<OPTION> option;
 
+	cout << endl;
 	p = strtok(command, " ");
 	while(p && p[0] == '-')
 	{
@@ -164,12 +201,11 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 		while((readBytes = read(client, &fileNameSize, 4)) > 0 &&
 				fileNameSize != -1 &&
 				(readBytes = read(client, fileName, fileNameSize)) > 0 &&
-				(readBytes = read(client, &sizeDigits, 4)) > 0 &&
-				(readBytes = read(client, &size, sizeDigits)) > 0)
+				(readBytes = read(client, &size, 4)) > 0 &&
+				(readBytes = read(client, &hashID, 4)) > 0)
 		{
 			fileName[fileNameSize] = '\0';
-			size[sizeDigits] = '\0';
-			cout << fileName << "   " << size << " bytes" << endl;
+			cout << fileName << "     " << size << " bytes" <<  "     " << hashID << endl;
 		}
 		cout << endl;
 		if(readBytes == -1)
@@ -180,7 +216,7 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 
 void FunctionArray::pause(char command[MAX_COMMAND_SIZE]) { }
 
-void FunctionArray::start(char command[MAX_COMMAND_SIZE]) { }
+void FunctionArray::resume(char command[MAX_COMMAND_SIZE]) { }
 
 FunctionArray::FunctionArray()
 {
@@ -189,7 +225,7 @@ FunctionArray::FunctionArray()
 	this->function.push_back(make_pair("find", find));
 	this->function.push_back(make_pair("pause", pause));
 	this->function.push_back(make_pair("quit", quit));
-	this->function.push_back(make_pair("start", start));
+	this->function.push_back(make_pair("resume", resume));
 }
 
 FunctionArray::~FunctionArray() { }

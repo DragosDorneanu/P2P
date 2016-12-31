@@ -7,6 +7,7 @@
 
 #include "RequestManager.hpp"
 #include <unistd.h>
+#include <cstring>
 #include "database_operation.hpp"
 
 #define DOWNLOAD 131
@@ -22,13 +23,38 @@ RequestManager::RequestManager() { }
 
 RequestManager::~RequestManager() { }
 
-void RequestManager::downloadProcedure(int &client, MYSQL * database) { }
+void RequestManager::downloadProcedure(int &client, MYSQL * database)
+{
+	unsigned int idSize, port;
+	int ipSize;
+	char id[12], sqlCommand[200];
+	MYSQL_RES * result;
+	MYSQL_ROW row;
+
+	if(read(client, &idSize, 4) == -1 || read(client, id, idSize) == -1)
+		readError();
+	id[idSize] = '\0';
+	sprintf(sqlCommand, "select distinct ip, port from UserStatus natural join Files natural join FileID where HashID = %d", atoi(id));
+	result = query(database, sqlCommand);
+	while((row = mysql_fetch_row(result)))
+	{
+		ipSize = strlen(row[0]);
+		port = atoi(row[1]);
+		if(write(client, &ipSize, 4) == -1 || write(client, row[0], ipSize) == -1)
+			writeError();
+		if(write(client, &port, 4) == -1)
+			writeError();
+	}
+	ipSize = -1;
+	if(write(client, &ipSize, 4) == -1)
+		writeError();
+}
 
 void RequestManager::findProcedure(int &client, MYSQL * database)
 {
 	bool searchByName = false;
 	int  fileNameSize;
-	unsigned int optionCount, option, restrictionSize, size;
+	unsigned int optionCount, option, restrictionSize, size, hashID;
 	char sqlCommand[1024], restriction[100], sqlCondition[512], fileName[1024], conditions[512];
 	MYSQL_RES * result;
 	MYSQL_ROW row;
@@ -66,17 +92,18 @@ void RequestManager::findProcedure(int &client, MYSQL * database)
 		readError();
 	fileName[fileNameSize] = '\0';
 	if(searchByName)
-		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where FileName = '%s'", fileName);
+		sprintf(sqlCommand, "select distinct FileName, size, HashID from Files natural join FileID where FileName = '%s'", fileName);
 	else
-		sprintf(sqlCommand, "select distinct FileName, size, HashValue from Files where instr(FileName, '%s') > 0", fileName);
+		sprintf(sqlCommand, "select distinct FileName, size, HashID from Files natural join FileID where instr(FileName, '%s') > 0", fileName);
 	strcat(sqlCommand, conditions);
 	result = query(database, sqlCommand);
 	while((row = mysql_fetch_row(result)))
 	{
 		fileNameSize = strlen(row[0]);
-		size = strlen(row[1]);
+		size = atoi(row[1]);
+		hashID = atoi(row[2]);
 		if(write(client, &fileNameSize, 4) == -1 || write(client, row[0], fileNameSize) == -1 ||
-				write(client, &size, 4) == -1 || write(client, row[1], size) == -1)
+				write(client, &size, 4) == -1 || write(client, &hashID, 4) == -1)
 			writeError();
 	}
 	fileNameSize = -1;
