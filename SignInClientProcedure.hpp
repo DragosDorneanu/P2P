@@ -59,15 +59,16 @@ void * makeRequests(void * args)
 void * acceptDownloadRequests(void * args)
 {
 	int servent, readBytes;
-	char * buffer = new char;
-	unsigned int fromSize = sizeof(sockaddr);
+	char fileName[100];
+	unsigned int fileNameSize, fromSize = sizeof(sockaddr);
 	sockaddr_in from;
 	FunctionArray * commandArray = (FunctionArray *)(args);
 
 	servent = commandArray->getServent();
-	while((readBytes = recvfrom(servent, buffer, 1024, 0 , (sockaddr *)&from, &fromSize)) > 0)
+	while((readBytes = recvfrom(servent, &fileNameSize, 4, 0 , (sockaddr *)&from, &fromSize)) > 0 &&
+			(readBytes = recvfrom(servent, fileName, fileNameSize, 0, (sockaddr *)&from, &fromSize)) > 0)
 	{
-
+		cout << "Am primit request pentru fisierul " << fileName << " de la user-ul cu IP " << inet_ntoa(from.sin_addr) << " si port " << ntohs(from.sin_port) << endl;
 	}
 	if(readBytes == -1)
 		readError();

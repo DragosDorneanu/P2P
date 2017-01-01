@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <cstring>
 #include "database_operation.hpp"
+#include <fstream>
 
 #define DOWNLOAD 131
 #define FIND 132
@@ -25,25 +26,43 @@ RequestManager::~RequestManager() { }
 
 void RequestManager::downloadProcedure(int &client, MYSQL * database)
 {
-	unsigned int idSize, port;
+	unsigned int idSize, fileNameSize, idValue;
 	int ipSize;
-	char id[12], sqlCommand[200];
+	uint16_t port;
+	char id[12], sqlCommand[200], getFileNameSQLCommand[150];
 	MYSQL_RES * result;
 	MYSQL_ROW row;
 
 	if(read(client, &idSize, 4) == -1 || read(client, id, idSize) == -1)
 		readError();
 	id[idSize] = '\0';
-	sprintf(sqlCommand, "select distinct ip, port from UserStatus natural join Files natural join FileID where HashID = %d", atoi(id));
-	result = query(database, sqlCommand);
-	while((row = mysql_fetch_row(result)))
+	idValue = atoi(id);
+	sprintf(getFileNameSQLCommand, "select distinct FileName from Files natural join FileID where HashID = %d", idValue);
+	sprintf(sqlCommand, "select distinct ip, port from UserStatus natural join Files natural join FileID where HashID = %d and status = 'online'", idValue);
+	result = query(database, getFileNameSQLCommand);
+	if(mysql_num_rows(result))
 	{
-		ipSize = strlen(row[0]);
-		port = atoi(row[1]);
-		if(write(client, &ipSize, 4) == -1 || write(client, row[0], ipSize) == -1)
+		row = mysql_fetch_row(result);
+		fileNameSize = strlen(row[0]);
+		if(write(client, &fileNameSize, 4) == -1 || write(client, row[0], fileNameSize) == -1)
 			writeError();
-		if(write(client, &port, 4) == -1)
+		result = query(database, sqlCommand);
+		while((row = mysql_fetch_row(result)))
+		{
+			ipSize = strlen(row[0]);
+			port = atoi(row[1]);
+			if(write(client, &ipSize, 4) == -1 || write(client, row[0], ipSize) == -1)
+				writeError();
+			if(write(client, &port, sizeof(uint16_t)) == -1)
+				writeError();
+		}
+	}
+	else
+	{
+		fileNameSize = -1;
+		if(write(client, &fileNameSize, 4) == -1)
 			writeError();
+		return;
 	}
 	ipSize = -1;
 	if(write(client, &ipSize, 4) == -1)

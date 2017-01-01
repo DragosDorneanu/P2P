@@ -13,7 +13,7 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <unistd.h>
-
+#include <unordered_set>
 #include "DatabaseQueryParameters.hpp"
 #include "SignInServerProcedure.hpp"
 #include "SignUpServerProcedure.hpp"

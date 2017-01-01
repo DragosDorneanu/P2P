@@ -61,8 +61,6 @@ inline void connectToDatabase(MYSQL *& databaseConnection)
 
 inline MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 {
-	//if(sqlInstruction[0] != 'i')
-		//printf("%s\n", sqlInstruction);
 	if(mysql_query(databaseConnection, sqlInstruction))
 	{
 		printf("%s\n", sqlInstruction);

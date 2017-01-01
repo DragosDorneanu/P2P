@@ -62,18 +62,18 @@ void setClientServerInfo(sockaddr_in &clientServer)
 	clientServer.sin_addr.s_addr = htonl(INADDR_ANY);
 }
 
-void bindClientServer(int &servent, struct sockaddr_in &clientServer)
+void bindClientServer(int &servent, sockaddr_in &clientServer)
 {
-	if(bind(servent, (struct sockaddr *)&clientServer, sizeof(struct sockaddr)) == -1)
+	if(bind(servent, (sockaddr *)&clientServer, sizeof(sockaddr)) == -1)
 	{
 		perror("Bind error");
 		exit(EXIT_FAILURE);
 	}
 }
 
-void connectToServer(int &servent, struct sockaddr_in &server)
+void connectToServer(int &servent, sockaddr_in &server)
 {
-	if(connect(servent, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
+	if(connect(servent, (sockaddr *)&server, sizeof(sockaddr)) == -1)
 	{
 		perror("Connect error");
 		exit(EXIT_FAILURE);

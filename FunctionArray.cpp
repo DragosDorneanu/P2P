@@ -13,6 +13,10 @@
 #include <cstdio>
 #include <unistd.h>
 #include <signal.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
 #include "FunctionArray.hpp"
 
 #define SEARCH_BY_SIZE 20
@@ -82,14 +86,14 @@ bool isLetter(char ch) {
 }
 
 bool isPunctuationSign(char ch) {
-	return (!isDigit(ch) && !isLetter(ch));
+	return (!isDigit(ch) && !isLetter(ch) && ch != '\n' && ch != '\t' && ch != ' ');
 }
 
 void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE]) { }
 
 bool containsNonDigit(char * str, unsigned int size)
 {
-	for(unsigned int index = 1; index < size; ++index)
+	for(unsigned int index = 0; index < size; ++index)
 	{
 		if(isLetter(str[index]) || isPunctuationSign(str[index]))
 			return true;
@@ -97,11 +101,20 @@ bool containsNonDigit(char * str, unsigned int size)
 	return false;
 }
 
+void setPeerInfo(sockaddr_in &destination, char ip[15], uint16_t port)
+{
+	destination.sin_addr.s_addr = inet_addr(ip);
+	destination.sin_port = port;
+	destination.sin_family = AF_INET;
+}
+
 void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 {
-	int readBytes, ipSize;
-	char peerIP[15];
-	unsigned int idSize, peerPort;
+	int readBytes, ipSize, fileNameSize;
+	char peerIP[15], fileName[100];
+	unsigned int idSize, peerCount = 0, length = sizeof(sockaddr);
+	uint16_t peerPort;
+	sockaddr_in destinationPeer;
 
 	cout << endl;
 	idSize = strlen(fileID);
@@ -110,13 +123,32 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 		sendInfoToServer(&DOWNLOAD, 2);
 		sendInfoToServer(&idSize, 4);
 		sendInfoToServer(fileID, idSize);
-		while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
-				(readBytes = read(client, peerIP, ipSize)) > 0 &&
-				(readBytes = read(client, &peerPort, 4)) > 0)
+
+		if(read(client, &fileNameSize, 4) == -1)
+			readError();
+		if(fileNameSize != -1)
 		{
-			peerIP[ipSize] = '\0';
-			cout << peerIP << "     " << peerPort << endl;
+			if(read(client, fileName, fileNameSize) == -1)
+				readError();
+			fileName[fileNameSize] = '\0';
+			cout << fileName << endl;
+			while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
+					(readBytes = read(client, peerIP, ipSize)) > 0 &&
+					(readBytes = read(client, &peerPort, sizeof(uint16_t))) > 0)
+			{
+				peerIP[ipSize] = '\0';
+				fileName[fileNameSize] = '\0';
+				++peerCount;
+				setPeerInfo(destinationPeer, peerIP, peerPort);
+				if(sendto(servent, &fileNameSize, 4, 0, (sockaddr *)&destinationPeer, length) == -1 ||
+						sendto(servent, fileName, fileNameSize, 0, (sockaddr *)&destinationPeer, length) == -1)
+					writeError();
+				cout << "Starting communication with " << peerIP << ' ' << destinationPeer.sin_port << ' ' << peerPort << endl;
+			}
+			if(readBytes == -1)
+				readError();
 		}
+		else cout << "Wanted file does not exist..." << endl;
 	}
 	else cout << "Wrong arguments : ID must contain only digits and must have size greater than 0" << endl;
 }
