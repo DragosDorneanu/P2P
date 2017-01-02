@@ -30,7 +30,7 @@
 using namespace std;
 
 int FunctionArray::client = 1;
-int FunctionArray::servent = 1;
+int FunctionArray::servent = 2;
 short FunctionArray::DELETE = 130;
 short FunctionArray::DOWNLOAD = 131;
 short FunctionArray::FIND = 132;
@@ -104,15 +104,14 @@ bool containsNonDigit(char * str, unsigned int size)
 void setPeerInfo(sockaddr_in &destination, char ip[15], uint16_t port)
 {
 	destination.sin_addr.s_addr = inet_addr(ip);
-	destination.sin_port = port;
-	destination.sin_family = AF_INET;
+	destination.sin_port = htons(port);
 }
 
 void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 {
 	int readBytes, ipSize, fileNameSize;
 	char peerIP[15], fileName[100];
-	unsigned int idSize, peerCount = 0, length = sizeof(sockaddr);
+	unsigned int idSize, peerCount = 0, length;
 	uint16_t peerPort;
 	sockaddr_in destinationPeer;
 
@@ -132,6 +131,8 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 				readError();
 			fileName[fileNameSize] = '\0';
 			cout << fileName << endl;
+			length = sizeof(destinationPeer);
+			destinationPeer.sin_family = AF_INET;
 			while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
 					(readBytes = read(client, peerIP, ipSize)) > 0 &&
 					(readBytes = read(client, &peerPort, sizeof(uint16_t))) > 0)
@@ -143,7 +144,7 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 				if(sendto(servent, &fileNameSize, 4, 0, (sockaddr *)&destinationPeer, length) == -1 ||
 						sendto(servent, fileName, fileNameSize, 0, (sockaddr *)&destinationPeer, length) == -1)
 					writeError();
-				cout << "Starting communication with " << peerIP << ' ' << destinationPeer.sin_port << ' ' << peerPort << endl;
+				cout << "Starting communication with " << inet_ntoa(destinationPeer.sin_addr) << ' ' << ntohs(destinationPeer.sin_port) << endl;
 			}
 			if(readBytes == -1)
 				readError();

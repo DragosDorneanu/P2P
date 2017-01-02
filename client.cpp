@@ -15,6 +15,10 @@
 #include "SignInClientProcedure.hpp"
 #include "SignUpClientProcedure.hpp"
 
+#define SERVENT_PORT 0
+#define SERVER_IP "86.124.185.69"
+#define SERVER_PORT 1234
+
 using namespace std;
 
 int getUserOption()
@@ -64,16 +68,16 @@ void setClientServerInfo(sockaddr_in &clientServer)
 
 void bindClientServer(int &servent, sockaddr_in &clientServer)
 {
-	if(bind(servent, (sockaddr *)&clientServer, sizeof(sockaddr)) == -1)
+	if(bind(servent, (sockaddr *)&clientServer, sizeof(clientServer)) == -1)
 	{
 		perror("Bind error");
 		exit(EXIT_FAILURE);
 	}
 }
 
-void connectToServer(int &servent, sockaddr_in &server)
+void connectToServer(int &client, sockaddr_in &server)
 {
-	if(connect(servent, (sockaddr *)&server, sizeof(sockaddr)) == -1)
+	if(connect(client, (sockaddr *)&server, sizeof(sockaddr)) == -1)
 	{
 		perror("Connect error");
 		exit(EXIT_FAILURE);
@@ -91,6 +95,9 @@ int main()
 	createUDPSocket(servent);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
+	setsockopt(servent, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
+	setsockopt(servent, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
+
 	bindClientServer(servent, clientServer);
 	option = getUserOption();
 	connectToServer(socketDescriptor, superServer);

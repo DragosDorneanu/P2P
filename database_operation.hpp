@@ -123,7 +123,7 @@ inline void insertInUserInfo(MYSQL * database, char * username, char * password)
 inline void insertInUserStatus(MYSQL * database, struct sockaddr_in clientInfo)
 {
 	char sqlCommand[100];
-	sprintf(sqlCommand, "insert into UserStatus value (NULL, 'offline', '%s', %d)", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
+	sprintf(sqlCommand, "insert into UserStatus value (NULL, 'offline', '%s', %d)", inet_ntoa(clientInfo.sin_addr), ntohs(clientInfo.sin_port));
 	query(database, sqlCommand);
 }
 

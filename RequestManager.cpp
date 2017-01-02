@@ -130,10 +130,10 @@ void RequestManager::findProcedure(int &client, MYSQL * database)
 		writeError();
 }
 
-void RequestManager::quitProcedure(MYSQL * database, char * clientIP)
+void RequestManager::quitProcedure(MYSQL * database, char * clientIP, unsigned int port)
 {
 	char sqlCommand[200];
-	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s'", clientIP);
+	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s' and port = %d", clientIP, port);
 	query(database, sqlCommand);
 }
 
@@ -148,7 +148,7 @@ void RequestManager::receiveRequests(int &client, MYSQL * database, sockaddr_in 
 		{
 		case DOWNLOAD : downloadProcedure(client, database); break;
 		case FIND : findProcedure(client, database); break;
-		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr)); return;
+		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port); return;
 		default : ;
 		}
 	}

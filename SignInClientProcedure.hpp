@@ -21,10 +21,6 @@
 #include "ValidationProcedures.hpp"
 #include "FunctionArray.hpp"
 
-#define SERVENT_PORT 0
-#define BACKLOG_SIZE 10
-#define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 1234
 #define SIGN_IN_ERROR 4
 #define SIGN_IN_SUCCESS 5
 
@@ -60,10 +56,11 @@ void * acceptDownloadRequests(void * args)
 {
 	int servent, readBytes;
 	char fileName[100];
-	unsigned int fileNameSize, fromSize = sizeof(sockaddr);
+	unsigned int fileNameSize, fromSize;
 	sockaddr_in from;
 	FunctionArray * commandArray = (FunctionArray *)(args);
 
+	fromSize = sizeof(from);
 	servent = commandArray->getServent();
 	while((readBytes = recvfrom(servent, &fileNameSize, 4, 0 , (sockaddr *)&from, &fromSize)) > 0 &&
 			(readBytes = recvfrom(servent, fileName, fileNameSize, 0, (sockaddr *)&from, &fromSize)) > 0)
@@ -86,11 +83,13 @@ void signInProcedure(int &client, int &servent)
 	commandArray.setClient(client);
 	commandArray.setServent(servent);
 	commandArray.setSignalHandler();
+
 	cin.ignore(1, '\n');
 	cout << "Username : ";
 	cin.getline(username, 50);
 	usernameSize = strlen(username);
 	readPasswordInHiddenMode(password, passwordSize);
+
 	sendUserInfoToServer(client, usernameSize, username, passwordSize, password);
 	if(read(client, &signinStatus, 4) == -1)
 		readError();
