@@ -30,7 +30,8 @@
 using namespace std;
 
 int FunctionArray::client = 1;
-int FunctionArray::servent = 2;
+int FunctionArray::servent = 1;
+int FunctionArray::requestSocket = 1;
 short FunctionArray::DELETE = 130;
 short FunctionArray::DOWNLOAD = 131;
 short FunctionArray::FIND = 132;
@@ -104,14 +105,23 @@ bool containsNonDigit(char * str, unsigned int size)
 void setPeerInfo(sockaddr_in &destination, char ip[15], uint16_t port)
 {
 	destination.sin_addr.s_addr = inet_addr(ip);
-	destination.sin_port = htons(port);
+	destination.sin_port = port;
+}
+
+void FunctionArray::connectRequestSocket(sockaddr_in peer)
+{
+	if(connect(requestSocket, (sockaddr *)&peer, sizeof(sockaddr)) == -1)
+	{
+		perror("Connecting peer error");
+		//exit(EXIT_FAILURE);
+	}
 }
 
 void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 {
 	int readBytes, ipSize, fileNameSize;
 	char peerIP[15], fileName[100];
-	unsigned int idSize, peerCount = 0, length;
+	unsigned int idSize, peerCount = 0;
 	uint16_t peerPort;
 	sockaddr_in destinationPeer;
 
@@ -131,7 +141,6 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 				readError();
 			fileName[fileNameSize] = '\0';
 			cout << fileName << endl;
-			length = sizeof(destinationPeer);
 			destinationPeer.sin_family = AF_INET;
 			while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
 					(readBytes = read(client, peerIP, ipSize)) > 0 &&
@@ -141,10 +150,11 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 				fileName[fileNameSize] = '\0';
 				++peerCount;
 				setPeerInfo(destinationPeer, peerIP, peerPort);
-				if(sendto(servent, &fileNameSize, 4, 0, (sockaddr *)&destinationPeer, length) == -1 ||
-						sendto(servent, fileName, fileNameSize, 0, (sockaddr *)&destinationPeer, length) == -1)
+				connectRequestSocket(destinationPeer);
+				cout << "IP : " << inet_ntoa(destinationPeer.sin_addr) << " PORT : " << destinationPeer.sin_port << endl;
+				if(write(requestSocket, &fileNameSize, 4) == -1 || write(requestSocket, fileName, fileNameSize) == -1)
 					writeError();
-				cout << "Starting communication with " << inet_ntoa(destinationPeer.sin_addr) << ' ' << ntohs(destinationPeer.sin_port) << endl;
+				cout << "Starting communication with " << inet_ntoa(destinationPeer.sin_addr) << ' ' << destinationPeer.sin_port << endl;
 			}
 			if(readBytes == -1)
 				readError();
@@ -300,4 +310,8 @@ void FunctionArray::setServent(int serventSD) {
 
 int FunctionArray::getServent() {
 	return servent;
+}
+
+void FunctionArray::setRequestSocket(int requestSD) {
+	requestSocket = requestSD;
 }

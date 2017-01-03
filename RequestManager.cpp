@@ -10,6 +10,8 @@
 #include <cstring>
 #include "database_operation.hpp"
 #include <fstream>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 #define DOWNLOAD 131
 #define FIND 132
@@ -24,7 +26,9 @@ RequestManager::RequestManager() { }
 
 RequestManager::~RequestManager() { }
 
-void RequestManager::downloadProcedure(int &client, MYSQL * database)
+// "select distinct ip, port from UserStatus natural join Files natural join FileID where HashID = %d and status = 'online' and ip != '%s' and port != %d",
+
+void RequestManager::downloadProcedure(int &client, MYSQL * database, sockaddr_in clientInfo)
 {
 	unsigned int idSize, fileNameSize, idValue;
 	int ipSize;
@@ -146,13 +150,13 @@ void RequestManager::receiveRequests(int &client, MYSQL * database, sockaddr_in 
 	{
 		switch(requestType)
 		{
-		case DOWNLOAD : downloadProcedure(client, database); break;
+		case DOWNLOAD : downloadProcedure(client, database, clientInfo); break;
 		case FIND : findProcedure(client, database); break;
 		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port); return;
 		default : ;
 		}
 	}
-	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s'", inet_ntoa(clientInfo.sin_addr));
+	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s' and port = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
 	query(database, sqlCommand);
 	if(readStatus == -1)
 		readError();

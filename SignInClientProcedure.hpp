@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <pthread.h>
 
 #include "ValidationProcedures.hpp"
 #include "FunctionArray.hpp"
@@ -52,27 +53,69 @@ void * makeRequests(void * args)
 	return (void *)(NULL);
 }
 
+bool acceptClient(int &client, int &socketDescriptor, sockaddr_in * from)
+{
+	unsigned int size = sizeof(from);
+	if((client = accept(socketDescriptor, (sockaddr *)from, &size)) == -1)
+	{
+		perror("Accept error");
+		return false;
+	}
+	return true;
+}
+
+struct DownloadParameter
+{
+	int peer;
+	sockaddr_in from;
+
+	DownloadParameter(int peer, sockaddr_in from)
+	{
+		this->peer = peer;
+		this->from = from;
+	}
+};
+
+void * solveRequest(void * args)
+{
+	DownloadParameter * parameter = (DownloadParameter *)(args);
+	char fileName[100];
+	unsigned int fileNameSize;
+
+	pthread_detach(pthread_self());
+	if(read(parameter->peer, &fileNameSize, 4) == -1 || read(parameter->peer, fileName, fileNameSize) == -1)
+		readError();
+	fileName[fileNameSize] = '\0';
+	cout << "Request : " << endl;
+	cout << "File name : " << fileName << endl;
+	cout << "From : " << "IP " << inet_ntoa(parameter->from.sin_addr) << " PORT " << parameter->from.sin_port << endl;
+	close(parameter->peer);
+	return (void *)(NULL);
+}
+
 void * acceptDownloadRequests(void * args)
 {
 	int servent, readBytes;
-	char fileName[100];
-	unsigned int fileNameSize, fromSize;
-	sockaddr_in from;
 	FunctionArray * commandArray = (FunctionArray *)(args);
 
-	fromSize = sizeof(from);
 	servent = commandArray->getServent();
-	while((readBytes = recvfrom(servent, &fileNameSize, 4, 0 , (sockaddr *)&from, &fromSize)) > 0 &&
-			(readBytes = recvfrom(servent, fileName, fileNameSize, 0, (sockaddr *)&from, &fromSize)) > 0)
+	while(true)
 	{
-		cout << "Am primit request pentru fisierul " << fileName << " de la user-ul cu IP " << inet_ntoa(from.sin_addr) << " si port " << ntohs(from.sin_port) << endl;
+		int peer;
+		pthread_t thread;
+		sockaddr_in from;
+
+		if(!acceptClient(peer, servent, &from))
+			continue;
+		DownloadParameter parameter(peer, from);
+		pthread_create(&thread, NULL, solveRequest, &parameter);
 	}
 	if(readBytes == -1)
 		readError();
 	return (void *)(NULL);
 }
 
-void signInProcedure(int &client, int &servent)
+void signInProcedure(int &client, int &servent, int &requestSocket)
 {
 	char username[50], password[50], downloadPath[512];
 	unsigned int usernameSize, passwordSize, signinStatus;
@@ -82,6 +125,7 @@ void signInProcedure(int &client, int &servent)
 
 	commandArray.setClient(client);
 	commandArray.setServent(servent);
+	commandArray.setRequestSocket(requestSocket);
 	commandArray.setSignalHandler();
 
 	cin.ignore(1, '\n');

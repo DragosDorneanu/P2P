@@ -60,10 +60,10 @@ void listenSocket(int &socketDescriptor)
 	}
 }
 
-bool acceptClient(int &client, int &socketDescriptor, struct sockaddr_in * from)
+bool acceptClient(int &client, int &socketDescriptor, sockaddr_in * from)
 {
 	unsigned int size = sizeof(from);
-	if((client = accept(socketDescriptor, (struct sockaddr *)from, &size)) == -1)
+	if((client = accept(socketDescriptor, (sockaddr *)from, &size)) == -1)
 	{
 		perror("Accept error");
 		return false;
@@ -96,7 +96,6 @@ int main()
 
 	createSocket(socketDescriptor);
 	setServerInformation(server);
-
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	bindServer(socketDescriptor, &server);

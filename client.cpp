@@ -16,8 +16,9 @@
 #include "SignUpClientProcedure.hpp"
 
 #define SERVENT_PORT 0
-#define SERVER_IP "86.124.185.69"
+#define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 1234
+#define BACKLOG_SIZE 20
 
 using namespace std;
 
@@ -37,15 +38,6 @@ int getUserOption()
 void createTCPSocket(int &client)
 {
 	if((client = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	{
-		perror("Error while creating socket...");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void createUDPSocket(int &servent)
-{
-	if((servent = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 	{
 		perror("Error while creating socket...");
 		exit(EXIT_FAILURE);
@@ -75,6 +67,15 @@ void bindClientServer(int &servent, sockaddr_in &clientServer)
 	}
 }
 
+void listenServent(int &servent)
+{
+	if(listen(servent, BACKLOG_SIZE) == -1)
+	{
+		perror("Listen error");
+		exit(EXIT_FAILURE);
+	}
+}
+
 void connectToServer(int &client, sockaddr_in &server)
 {
 	if(connect(client, (sockaddr *)&server, sizeof(sockaddr)) == -1)
@@ -84,21 +85,36 @@ void connectToServer(int &client, sockaddr_in &server)
 	}
 }
 
+uint16_t getServentPort(int &servent, sockaddr_in clientServer)
+{
+	unsigned int length = sizeof(clientServer);
+	if(getsockname(servent, (sockaddr *)&clientServer, &length) == -1)
+	{
+		perror("Error while getting servent port");
+		exit(EXIT_FAILURE);
+	}
+	return clientServer.sin_port;
+}
+
 int main()
 {
-	int option, servent, socketDescriptor, enableReuse = 1;
+	int option, servent, requestSocket, socketDescriptor, enableReuse = 1;
 	sockaddr_in superServer, clientServer;
+	uint16_t serventPort;
 
 	setSuperServerInfo(superServer);
 	setClientServerInfo(clientServer);
 	createTCPSocket(socketDescriptor);
-	createUDPSocket(servent);
+	createTCPSocket(servent);
+	createTCPSocket(requestSocket);
+
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	setsockopt(servent, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(servent, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 
 	bindClientServer(servent, clientServer);
+	listenServent(servent);
 	option = getUserOption();
 	connectToServer(socketDescriptor, superServer);
 
@@ -107,7 +123,12 @@ int main()
 	if(option == 1)
 		signUpProcedure(socketDescriptor);
 	else
-		signInProcedure(socketDescriptor, servent);
+	{
+		serventPort = getServentPort(servent, clientServer);
+		if(write(socketDescriptor, &serventPort, sizeof(uint16_t)) == -1)
+			writeError();
+		signInProcedure(socketDescriptor, servent, requestSocket);
+	}
 	close(socketDescriptor);
 	return 0;
 }

@@ -14,7 +14,7 @@
 class RequestManager
 {
 private:
-	static void downloadProcedure(int &client, MYSQL * database);
+	static void downloadProcedure(int &client, MYSQL * database, sockaddr_in clientInfo);
 	static void findProcedure(int &client, MYSQL * database);
 	static void quitProcedure(MYSQL * database, char * clientIP, unsigned int port);
 

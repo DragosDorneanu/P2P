@@ -46,8 +46,10 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL_RES * queryResult;
 	char username[50], password[50], sqlCommand[300];
 	unsigned int sizeOfUsername, sizeOfPassword;
+	sockaddr_in clientInfo = parameters->getClientInfo();
 
-	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
+	if(read(client, &clientInfo.sin_port, sizeof(clientInfo.sin_port)) == -1 ||
+			read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
 			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
 	{
 		loginFailMessage(client);
@@ -60,8 +62,8 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult))
 	{
-		successfulLoginProcedure(database, client, parameters->getClientInfo(), mysql_fetch_row(queryResult));
-		RequestManager::receiveRequests(client, database, parameters->getClientInfo());
+		successfulLoginProcedure(database, client, clientInfo, mysql_fetch_row(queryResult));
+		RequestManager::receiveRequests(client, database, clientInfo);
 		close(client);
 	}
 	else loginFailMessage(client);
