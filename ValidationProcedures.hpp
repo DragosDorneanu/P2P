@@ -35,7 +35,7 @@ void writeError()
 
 void readPasswordInHiddenMode(char password[50], unsigned int &size)
 {
-	struct termios oldTerminal, newTerminal;
+	termios oldTerminal, newTerminal;
 	tcgetattr(fileno(stdin), &oldTerminal);
 	newTerminal = oldTerminal;
 	newTerminal.c_lflag &= ~(ECHO);
@@ -87,15 +87,15 @@ bool hashFile(char * file, char fileHash[65])
 	return true;
 }
 
-bool isHiddenFile(struct dirent * file) {
+bool isHiddenFile(dirent * file) {
 	return file->d_name[0] == '.';
 }
 
-bool isDirectory(struct dirent * file) {
+bool isDirectory(dirent * file) {
 	return file->d_type == DT_DIR;
 }
 
-bool isFifo(struct dirent * file) {
+bool isFifo(dirent * file) {
 	return file->d_type == DT_FIFO;
 }
 

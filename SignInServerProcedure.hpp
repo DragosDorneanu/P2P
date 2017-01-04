@@ -46,6 +46,7 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	MYSQL_RES * queryResult;
 	char username[50], password[50], sqlCommand[300];
 	unsigned int sizeOfUsername, sizeOfPassword;
+	pthread_mutex_t dbLock;
 	sockaddr_in clientInfo = parameters->getClientInfo();
 
 	if(read(client, &clientInfo.sin_port, sizeof(clientInfo.sin_port)) == -1 ||
@@ -62,7 +63,10 @@ void signInServerProcedure(DatabaseQueryParameters * parameters)
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult))
 	{
+		dbLock = PTHREAD_MUTEX_INITIALIZER;
+		pthread_mutex_lock(&dbLock);
 		successfulLoginProcedure(database, client, clientInfo, mysql_fetch_row(queryResult));
+		pthread_mutex_unlock(&dbLock);
 		RequestManager::receiveRequests(client, database, clientInfo);
 		close(client);
 	}

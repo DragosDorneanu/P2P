@@ -19,16 +19,18 @@ using namespace std;
 #define MAX_COMMAND_SIZE 1024
 #define FUNCTION pair<string, void(*)(char *)>
 #define ACTIVE_OBJECT pair<string, pair<string, string> >
+#define PEER pair<char *, uint16_t>
 
 class FunctionArray
 {
 private:
 	static int client, servent, requestSocket;
 	vector<FUNCTION> function;
-	multiset<ACTIVE_OBJECT> activeList;
+	static multiset<ACTIVE_OBJECT> activeList;
 	static short DELETE, DOWNLOAD, FIND, PAUSE, RESUME, QUIT;
 
 	static void sendInfoToServer(void * data, unsigned int dataSize);
+	static void displayActiveList(char command[MAX_COMMAND_SIZE]);
 	static void find(char command[MAX_COMMAND_SIZE]);
 	static void download(char fileID[MAX_COMMAND_SIZE]);
 	static void pause(char command[MAX_COMMAND_SIZE]);
@@ -39,6 +41,9 @@ private:
 	static void writeError();
 	static void connectRequestSocket(sockaddr_in peer);
 	static void quitSignalHandler(int signal);
+	static void sendFileChunk(int &peer, char fileName[100], unsigned int startOffset, unsigned int endOffset);
+	static void * downloadFileChunk(void * args);
+	static void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned int fileSize);
 
 public:
 	FunctionArray();
@@ -52,6 +57,19 @@ public:
 	static void setRequestSocket(int requestSD);
 	static void setSignalHandler();
 	static int getServent();
+	static void * solveDownloadRequest(void * args);
+};
+
+struct DownloadParameter
+{
+	int peer;
+	sockaddr_in from;
+
+	DownloadParameter(int peer, sockaddr_in from)
+	{
+		this->peer = peer;
+		this->from = from;
+	}
 };
 
 #endif /* FUNCTIONARRAY_HPP_ */

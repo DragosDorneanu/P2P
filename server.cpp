@@ -76,6 +76,7 @@ void * solveRequest(void * args)
 	DatabaseQueryParameters * parameters = (DatabaseQueryParameters *)args;
 	int client = *(parameters->getClient());
 	int option;
+
 	pthread_detach(pthread_self());
 	if(read(client, &option, 4) == -1)
 		readError();

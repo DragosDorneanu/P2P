@@ -67,6 +67,7 @@ void signUpServerProcedure(DatabaseQueryParameters * parameters)
 	queryResult = query(database, sqlCommand);
 	if(mysql_num_rows(queryResult) == 0)
 	{
+		dbLock = PTHREAD_MUTEX_INITIALIZER;
 		pthread_mutex_lock(&dbLock);
 		succesfulSignUpProcedure(database, client, parameters->getClientInfo(), username, password);
 		pthread_mutex_unlock(&dbLock);

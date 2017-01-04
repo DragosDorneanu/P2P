@@ -64,35 +64,6 @@ bool acceptClient(int &client, int &socketDescriptor, sockaddr_in * from)
 	return true;
 }
 
-struct DownloadParameter
-{
-	int peer;
-	sockaddr_in from;
-
-	DownloadParameter(int peer, sockaddr_in from)
-	{
-		this->peer = peer;
-		this->from = from;
-	}
-};
-
-void * solveRequest(void * args)
-{
-	DownloadParameter * parameter = (DownloadParameter *)(args);
-	char fileName[100];
-	unsigned int fileNameSize;
-
-	pthread_detach(pthread_self());
-	if(read(parameter->peer, &fileNameSize, 4) == -1 || read(parameter->peer, fileName, fileNameSize) == -1)
-		readError();
-	fileName[fileNameSize] = '\0';
-	cout << "Request : " << endl;
-	cout << "File name : " << fileName << endl;
-	cout << "From : " << "IP " << inet_ntoa(parameter->from.sin_addr) << " PORT " << parameter->from.sin_port << endl;
-	close(parameter->peer);
-	return (void *)(NULL);
-}
-
 void * acceptDownloadRequests(void * args)
 {
 	int servent, readBytes;
@@ -108,7 +79,7 @@ void * acceptDownloadRequests(void * args)
 		if(!acceptClient(peer, servent, &from))
 			continue;
 		DownloadParameter parameter(peer, from);
-		pthread_create(&thread, NULL, solveRequest, &parameter);
+		pthread_create(&thread, NULL, FunctionArray::solveDownloadRequest, &parameter);
 	}
 	if(readBytes == -1)
 		readError();
@@ -143,6 +114,7 @@ void signInProcedure(int &client, int &servent, int &requestSocket)
 		listDirectory(client, downloadPath);
 		markEndOfFileSharing(client);
 		cout << "You have signed in successfully!!!" << endl;
+		chdir(downloadPath);
 		pthread_create(&makeRequestThread, NULL, makeRequests, (void *)&commandArray);
 		pthread_create(&acceptDownloadRequestThread, NULL, acceptDownloadRequests, (void *)&commandArray);
 		pthread_join(makeRequestThread, (void **)NULL);
