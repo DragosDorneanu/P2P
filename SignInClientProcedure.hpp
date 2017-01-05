@@ -86,7 +86,7 @@ void * acceptDownloadRequests(void * args)
 	return (void *)(NULL);
 }
 
-void signInProcedure(int &client, int &servent, int &requestSocket)
+void signInProcedure(int &client, int &servent)
 {
 	char username[50], password[50], downloadPath[512];
 	unsigned int usernameSize, passwordSize, signinStatus;
@@ -96,7 +96,6 @@ void signInProcedure(int &client, int &servent, int &requestSocket)
 
 	commandArray.setClient(client);
 	commandArray.setServent(servent);
-	commandArray.setRequestSocket(requestSocket);
 	commandArray.setSignalHandler();
 
 	cin.ignore(1, '\n');

@@ -98,7 +98,7 @@ uint16_t getServentPort(int &servent, sockaddr_in clientServer)
 
 int main()
 {
-	int option, servent, requestSocket, socketDescriptor, enableReuse = 1;
+	int option, servent, socketDescriptor, enableReuse = 1;
 	sockaddr_in superServer, clientServer;
 	uint16_t serventPort;
 
@@ -106,14 +106,11 @@ int main()
 	setClientServerInfo(clientServer);
 	createTCPSocket(socketDescriptor);
 	createTCPSocket(servent);
-	createTCPSocket(requestSocket);
 
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	setsockopt(servent, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(servent, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
-	setsockopt(requestSocket, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
-	setsockopt(requestSocket, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 
 	bindClientServer(servent, clientServer);
 	listenServent(servent);
@@ -129,7 +126,7 @@ int main()
 		serventPort = getServentPort(servent, clientServer);
 		if(write(socketDescriptor, &serventPort, sizeof(uint16_t)) == -1)
 			writeError();
-		signInProcedure(socketDescriptor, servent, requestSocket);
+		signInProcedure(socketDescriptor, servent);
 	}
 	close(socketDescriptor);
 	return 0;

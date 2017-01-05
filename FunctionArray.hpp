@@ -24,7 +24,7 @@ using namespace std;
 class FunctionArray
 {
 private:
-	static int client, servent, requestSocket;
+	static int client, servent;
 	vector<FUNCTION> function;
 	static multiset<ACTIVE_OBJECT> activeList;
 	static short DELETE, DOWNLOAD, FIND, PAUSE, RESUME, QUIT;
@@ -39,7 +39,6 @@ private:
 	static void quit(char command[MAX_COMMAND_SIZE]);
 	static void readError();
 	static void writeError();
-	static void connectRequestSocket(sockaddr_in peer);
 	static void quitSignalHandler(int signal);
 	static void sendFileChunk(int &peer, char fileName[100], unsigned int startOffset, unsigned int endOffset);
 	static void * downloadFileChunk(void * args);
@@ -54,7 +53,6 @@ public:
 	void execute(unsigned int functionIndex, char command[MAX_COMMAND_SIZE]);
 	static void setClient(int clientSD);
 	static void setServent(int serventSD);
-	static void setRequestSocket(int requestSD);
 	static void setSignalHandler();
 	static int getServent();
 	static void * solveDownloadRequest(void * args);
