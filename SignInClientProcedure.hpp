@@ -92,7 +92,7 @@ void signInProcedure(int &client, int &servent)
 	unsigned int usernameSize, passwordSize, signinStatus;
 	ifstream configFile("path.conf");
 	FunctionArray commandArray;
-	pthread_t makeRequestThread, acceptDownloadRequestThread;
+	pthread_t makeRequestThread, acceptDownloadRequestThread, fileShareThread;
 
 	commandArray.setClient(client);
 	commandArray.setServent(servent);
@@ -110,14 +110,15 @@ void signInProcedure(int &client, int &servent)
 	configFile.getline(downloadPath, 512);
 	if(signinStatus == SIGN_IN_SUCCESS)
 	{
-		listDirectory(client, downloadPath);
-		markEndOfFileSharing(client);
+		FileShareParameter * parameter = new FileShareParameter(client, downloadPath);
+		pthread_create(&fileShareThread, NULL, shareFiles, (void *)parameter);
 		cout << "You have signed in successfully!!!" << endl;
 		chdir(downloadPath);
 		pthread_create(&makeRequestThread, NULL, makeRequests, (void *)&commandArray);
 		pthread_create(&acceptDownloadRequestThread, NULL, acceptDownloadRequests, (void *)&commandArray);
 		pthread_join(makeRequestThread, (void **)NULL);
 		pthread_join(acceptDownloadRequestThread, (void **)NULL);
+		delete parameter;
 	}
 	else
 	{

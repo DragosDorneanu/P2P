@@ -47,16 +47,11 @@ void signUpProcedure(int &client)
 	readPasswordInHiddenMode(password, sizeOfPassword);
 	sendUserInfoToServer(client, sizeOfUsername, username, sizeOfPassword, password);
 	readDownloadPath(downloadPath);
+
 	if(read(client, &signUpStatus, 4) == -1)
 		readError();
 	if(signUpStatus == SIGN_UP_SUCCESS)
 	{
-		cout << "Sharing your available files. This could take a while because of the size of your directory..." << endl;
-		if(!sendAvailableFilesToServer(client, downloadPath))
-		{
-			cout << "Invalid download path or error while sharing available files. Other information were successful saved." << endl;
-			exit(EXIT_FAILURE);
-		}
 		cout << "You have signed up successful!!!" << endl;
 		exit(EXIT_SUCCESS);
 	}

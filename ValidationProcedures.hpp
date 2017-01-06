@@ -13,13 +13,26 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <cstdio>
 #include <openssl/sha.h>
 #include <cstring>
 #include <cstdlib>
-#include <sys/file.h>
+#include <pthread.h>
 
 using namespace std;
+
+struct FileShareParameter
+{
+	int client;
+	char downloadPath[512];
+
+	FileShareParameter(int client, char downloadPath[512])
+	{
+		this->client = client;
+		strcpy(this->downloadPath, downloadPath);
+	}
+};
 
 void readError()
 {
@@ -57,11 +70,16 @@ void sendUserInfoToServer(int &client, unsigned int userSize, char username[50],
 
 bool statFile(struct stat &fileStatus, char path[512])
 {
+	pthread_mutex_t fileLock = PTHREAD_MUTEX_INITIALIZER;
+
+	pthread_mutex_lock(&fileLock);
 	if(stat(path, &fileStatus) == -1)
 	{
 		perror("Stat error");
+		pthread_mutex_unlock(&fileLock);
 		return false;
 	}
+	pthread_mutex_unlock(&fileLock);
 	return true;
 }
 
@@ -71,16 +89,18 @@ bool hashFile(char * file, char fileHash[65])
 	char data[5121];
 	int bytes, toHashFile;
 	SHA256_CTX sha;
+	pthread_mutex_t fileLock = PTHREAD_MUTEX_INITIALIZER;
 
 	if((toHashFile = open(file, O_RDONLY, 0600)) == -1)
 		return false;
-	flock(toHashFile, LOCK_EX);
+
+	pthread_mutex_lock(&fileLock);
 	SHA256_Init(&sha);
 	while((bytes = read(toHashFile, data, 5120)) > 0)
 		SHA256_Update(&sha, data, bytes);
 	if(bytes == -1)
 		readError();
-	flock(toHashFile, LOCK_UN);
+	pthread_mutex_unlock(&fileLock);
 	SHA256_Final(shaData, &sha);
 	for(bytes = 0; bytes < SHA256_DIGEST_LENGTH; ++bytes)
 		sprintf(fileHash + 2 * bytes, "%02x", shaData[bytes]);
@@ -150,12 +170,13 @@ void markEndOfFileSharing(int &client)
 		writeError();
 }
 
-bool sendAvailableFilesToServer(int &client, char downloadPath[512])
+void * shareFiles(void * args)
 {
-	if(!listDirectory(client, downloadPath))
-		return false;
-	return true;
+	FileShareParameter * parameter = (FileShareParameter *)(args);
+	pthread_detach(pthread_self());
+	listDirectory(parameter->client, parameter->downloadPath);
+	markEndOfFileSharing(parameter->client);
+	return (void *)(NULL);
 }
-
 
 #endif /* VALIDATIONPROCEDURES_HPP_ */

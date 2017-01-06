@@ -31,19 +31,9 @@ void signUpSuccessMessage(int &client)
 
 void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char * username, char * password)
 {
-	char sqlCommand[200];
-	MYSQL_RES * queryResult;
-	MYSQL_ROW id;
-	int idValue;
-
 	signUpSuccessMessage(client);
 	insertInUserInfo(database, username, password);
 	insertInUserStatus(database, clientInfo);
-	sprintf(sqlCommand, "select id from UserInfo where username = '%s'", username);
-	queryResult = query(database, sqlCommand);
-	id = mysql_fetch_row(queryResult);
-	idValue = atoi(id[0]);
-	insertUserAvailableFiles(database, client, idValue);
 }
 
 void signUpServerProcedure(DatabaseQueryParameters * parameters)

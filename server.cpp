@@ -107,8 +107,9 @@ int main()
 	while(true)
 	{
 		int clientSocket;
-		struct sockaddr_in from;
+		sockaddr_in from;
 		pthread_t thread;
+
 		cout << "Waiting for a client to connect..." << endl;
 		if(!acceptClient(clientSocket, socketDescriptor, &from))
 			continue;
