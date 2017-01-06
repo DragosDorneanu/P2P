@@ -191,8 +191,8 @@ void * downloadFileChunk(void * args)
 	}
 	if(readBytes == -1)
 		perror("Receive file chunk error");
-	delete parameter;
 	close(parameter->requestSocket);
+	delete parameter;
 	return (void *)(NULL);
 }
 
