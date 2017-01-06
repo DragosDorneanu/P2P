@@ -42,6 +42,22 @@ short FunctionArray::RESUME = 134;
 short FunctionArray::QUIT = 135;
 multiset<ACTIVE_OBJECT> FunctionArray::activeList;
 
+struct InitFileTransferParameter
+{
+	unsigned int fileNameSize;
+	unsigned int fileSize;
+	vector<PEER> peer;
+	char fileName[100];
+
+	InitFileTransferParameter(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned int fileSize)
+	{
+		this->peer = peer;
+		strcpy(this->fileName, fileName);
+		this->fileNameSize = fileNameSize;
+		this->fileSize = fileSize;
+	}
+};
+
 struct MakeDownloadRequestParameter
 {
 	int requestSocket;
@@ -148,7 +164,7 @@ void connectRequestSocket(int &requestSocket, sockaddr_in peer)
 	}
 }
 
-void * FunctionArray::downloadFileChunk(void * args)
+void * downloadFileChunk(void * args)
 {
 	int readBytes;
 	char fileChunk[CHUNK_SIZE];
@@ -160,7 +176,10 @@ void * FunctionArray::downloadFileChunk(void * args)
 			write(parameter->requestSocket, parameter->fileName, parameter->fileNameSize) == -1 ||
 			write(parameter->requestSocket, &parameter->startOffset, 4) == -1 ||
 			write(parameter->requestSocket, &parameter->endOffset, 4) == -1)
-		writeError();
+	{
+		perror("Send file information error");
+		return (void *)(NULL);
+	}
 
 	while((readBytes = read(parameter->requestSocket, fileChunk, CHUNK_SIZE)) > 0)
 	{
@@ -187,16 +206,17 @@ bool createSocket(int &client)
 	return true;
 }
 
-void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned int fileSize)
+void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned int fileSize)
 {
 	sockaddr_in destinationPeer;
 	unsigned int index;
-	unsigned int chunkSize = ceil((double)fileSize / peer.size());
+	unsigned int chunkSize = ceil((double)(fileSize) / (peer.size()));
 	unsigned int startOffset = 0, endOffset = chunkSize;
 	vector<pthread_t> downloadThread;
 
 	downloadThread.reserve(peer.size());
 	destinationPeer.sin_family = AF_INET;
+
 	for(index = 0; index < peer.size(); ++index)
 	{
 		int client;
@@ -205,6 +225,7 @@ void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsi
 
 		if(!createSocket(client))
 			continue;
+
 		parameter = new MakeDownloadRequestParameter(client, fileNameSize, fileName, startOffset, endOffset);
 		setPeerInfo(destinationPeer, peer[index].first, peer[index].second);
 		connectRequestSocket(client, destinationPeer);
@@ -215,17 +236,50 @@ void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsi
 		startOffset = endOffset + 1;
 		endOffset += chunkSize;
 	}
+
 	for(index = 0; index < downloadThread.size(); ++index)
 		pthread_join(downloadThread[index], (void **)(NULL));
 }
 
-void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
+void * FunctionArray::startDownloadProcedure(void * args)
 {
 	int readBytes, ipSize, fileNameSize, fileSize;
 	char peerIP[15], fileName[100];
-	unsigned int idSize;
 	uint16_t peerPort;
 	vector<PEER> peer;
+
+	pthread_detach(pthread_self());
+	if(read(client, &fileNameSize, 4) == -1)
+		readError();
+
+	if(fileNameSize != -1)
+	{
+		if(read(client, fileName, fileNameSize) == -1 || read(client, &fileSize, 4) == -1)
+			readError();
+		fileName[fileNameSize] = '\0';
+
+		while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
+					(readBytes = read(client, peerIP, ipSize)) > 0 &&
+					(readBytes = read(client, &peerPort, sizeof(uint16_t))) > 0)
+			{
+				peerIP[ipSize] = '\0';
+				peer.push_back(make_pair(peerIP, peerPort));
+			}
+		if(readBytes == -1)
+			readError();
+		if(peer.size() > 0)
+		{
+			cout << fileName << " is downloading" << endl;
+			initFileTransfer(peer, fileName, fileNameSize, fileSize);
+		}
+	}
+	else cout << "Wanted file has no seeders for the moment..." << endl;
+	return (void *)(NULL);
+}
+
+void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
+{
+	unsigned int idSize;
 
 	cout << endl;
 	idSize = strlen(fileID);
@@ -235,30 +289,9 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 		sendInfoToServer(&idSize, 4);
 		sendInfoToServer(fileID, idSize);
 
-		if(read(client, &fileNameSize, 4) == -1)
-			readError();
-		if(fileNameSize != -1)
-		{
-			if(read(client, fileName, fileNameSize) == -1 || read(client, &fileSize, 4) == -1)
-				readError();
-			fileName[fileNameSize] = '\0';
-
-			while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
-					(readBytes = read(client, peerIP, ipSize)) > 0 &&
-					(readBytes = read(client, &peerPort, sizeof(uint16_t))) > 0)
-			{
-				peerIP[ipSize] = '\0';
-				peer.push_back(make_pair(peerIP, peerPort));
-			}
-			if(readBytes == -1)
-				readError();
-			if(peer.size() > 0)
-			{
-				cout << fileName << " is downloading" << endl;
-				initFileTransfer(peer, fileName, fileNameSize, fileSize);
-			}
-		}
-		else cout << "Wanted file does not exist..." << endl;
+		pthread_t startDownloadProcedureThread;
+		pthread_create(&startDownloadProcedureThread, NULL, startDownloadProcedure, (void *)(NULL));
+		sleep(1);
 	}
 	else cout << "Wrong arguments : ID must contain only digits and must have size greater than 0" << endl;
 }
@@ -473,6 +506,7 @@ void FunctionArray::sendFileChunk(int &peer, char fileName[100], unsigned int st
 			return;
 		sendFileChunkToPeer(peer, fileChunk, endOffset - currentOffset);
 	}
+	cout << "Sent !!!" << endl;
 }
 
 void * FunctionArray::solveDownloadRequest(void * args)

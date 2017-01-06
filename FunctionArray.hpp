@@ -41,8 +41,7 @@ private:
 	static void writeError();
 	static void quitSignalHandler(int signal);
 	static void sendFileChunk(int &peer, char fileName[100], unsigned int startOffset, unsigned int endOffset);
-	static void * downloadFileChunk(void * args);
-	static void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned int fileSize);
+	static void * startDownloadProcedure(void * args);
 
 public:
 	FunctionArray();
