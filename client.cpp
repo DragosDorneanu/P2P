@@ -62,7 +62,7 @@ void bindClientServer(int &servent, sockaddr_in &clientServer)
 {
 	if(bind(servent, (sockaddr *)&clientServer, sizeof(clientServer)) == -1)
 	{
-		perror("Bind error");
+		cout << "Bind error ...";
 		exit(EXIT_FAILURE);
 	}
 }
@@ -110,7 +110,6 @@ int main()
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 	setsockopt(servent, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
-	setsockopt(servent, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
 
 	bindClientServer(servent, clientServer);
 	listenServent(servent);

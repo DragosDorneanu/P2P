@@ -26,15 +26,13 @@ RequestManager::RequestManager() { }
 
 RequestManager::~RequestManager() { }
 
-// "select distinct ip, port from UserStatus natural join Files natural join FileID where HashID = %d and status = 'online' and ip != '%s' and port != %d",
-
-void RequestManager::downloadProcedure(int &client, MYSQL * database, sockaddr_in clientInfo)
+void RequestManager::downloadProcedure(int &client, MYSQL *& database, sockaddr_in clientInfo)
 {
 	int ipSize;
 	uint16_t port;
 	unsigned int idSize, fileNameSize, idValue, fileSize, userID;
 	char id[12], sqlCommand[200], getFileSQLCommand[150], getUserIDCommand[150];
-	pthread_mutex_t dbLock;
+	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
 	MYSQL_RES * result;
 	MYSQL_ROW row;
 
@@ -46,14 +44,13 @@ void RequestManager::downloadProcedure(int &client, MYSQL * database, sockaddr_i
 	sprintf(getUserIDCommand, "select id from UserStatus where ip = '%s' and port = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
 	sprintf(getFileSQLCommand, "select distinct FileName, size from Files natural join FileID where HashID = %d", idValue);
 
-	dbLock = PTHREAD_MUTEX_INITIALIZER;;
-	pthread_mutex_lock(&dbLock);
+	//pthread_mutex_lock(&dbLock);
 	result = query(database, getUserIDCommand);
 	row = mysql_fetch_row(result);
 	userID = atoi(row[0]);
 	sprintf(sqlCommand, "select distinct ip, port from UserStatus natural join Files natural join FileID where HashID = %d and status = 'online' and UserStatus.id != %d", idValue, userID);
 	result = query(database, getFileSQLCommand);
-	pthread_mutex_unlock(&dbLock);
+	//pthread_mutex_unlock(&dbLock);
 
 	if(mysql_num_rows(result))
 	{
@@ -63,9 +60,9 @@ void RequestManager::downloadProcedure(int &client, MYSQL * database, sockaddr_i
 		if(write(client, &fileNameSize, 4) == -1 || write(client, row[0], fileNameSize) == -1 || write(client, &fileSize, 4) == -1)
 			writeError();
 
-		pthread_mutex_lock(&dbLock);
+		//pthread_mutex_lock(&dbLock);
 		result = query(database, sqlCommand);
-		pthread_mutex_unlock(&dbLock);
+		//pthread_mutex_unlock(&dbLock);
 
 		while((row = mysql_fetch_row(result)))
 		{
@@ -89,13 +86,13 @@ void RequestManager::downloadProcedure(int &client, MYSQL * database, sockaddr_i
 		writeError();
 }
 
-void RequestManager::findProcedure(int &client, MYSQL * database)
+void RequestManager::findProcedure(int &client, MYSQL *& database)
 {
 	bool searchByName = false;
 	int  fileNameSize;
 	unsigned int optionCount, option, restrictionSize, size, hashID;
 	char sqlCommand[1024], restriction[100], sqlCondition[512], fileName[1024], conditions[512];
-	pthread_mutex_t dbLock;
+	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
 	MYSQL_RES * result;
 	MYSQL_ROW row;
 
@@ -141,10 +138,9 @@ void RequestManager::findProcedure(int &client, MYSQL * database)
 		sprintf(sqlCommand, "select distinct FileName, size, HashID from Files natural join FileID where instr(FileName, '%s') > 0", fileName);
 	strcat(sqlCommand, conditions);
 
-	dbLock = PTHREAD_MUTEX_INITIALIZER;;
-	pthread_mutex_lock(&dbLock);
+	//pthread_mutex_lock(&dbLock);
 	result = query(database, sqlCommand);
-	pthread_mutex_unlock(&dbLock);
+	//pthread_mutex_unlock(&dbLock);
 
 	while((row = mysql_fetch_row(result)))
 	{
@@ -160,25 +156,23 @@ void RequestManager::findProcedure(int &client, MYSQL * database)
 		writeError();
 }
 
-void RequestManager::quitProcedure(MYSQL * database, char * clientIP, unsigned int port)
+void RequestManager::quitProcedure(MYSQL *& database, char * clientIP, unsigned int port)
 {
 	char sqlCommand[200];
-	pthread_mutex_t dbLock;
+	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
 
 	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s' and port = %d", clientIP, port);
-	dbLock = PTHREAD_MUTEX_INITIALIZER;;
-	pthread_mutex_lock(&dbLock);
+	//pthread_mutex_lock(&dbLock);
 	query(database, sqlCommand);
-	pthread_mutex_unlock(&dbLock);
+	//pthread_mutex_unlock(&dbLock);
 }
 
-void RequestManager::receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo)
+void RequestManager::receiveRequests(int &client, MYSQL *& database, sockaddr_in clientInfo)
 {
 	short readStatus, requestType;
 	char sqlCommand[200];
-	pthread_mutex_t dbLock;
+	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
 
-	dbLock = PTHREAD_MUTEX_INITIALIZER;;
 	while((readStatus = read(client, &requestType, 2)) > 0)
 	{
 		switch(requestType)
@@ -189,10 +183,11 @@ void RequestManager::receiveRequests(int &client, MYSQL * database, sockaddr_in 
 		default : ;
 		}
 	}
+
 	sprintf(sqlCommand, "update UserStatus set status = 'offline' where ip = '%s' and port = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
-	pthread_mutex_lock(&dbLock);
+	//pthread_mutex_lock(&dbLock);
 	query(database, sqlCommand);
-	pthread_mutex_unlock(&dbLock);
+	//pthread_mutex_unlock(&dbLock);
 	if(readStatus == -1)
 		readError();
 

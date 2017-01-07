@@ -40,6 +40,7 @@ short FunctionArray::FIND = 132;
 short FunctionArray::PAUSE = 133;
 short FunctionArray::RESUME = 134;
 short FunctionArray::QUIT = 135;
+short FunctionArray::DOWNLOAD_FINISHED = 136;
 multiset<ACTIVE_OBJECT> FunctionArray::activeList;
 
 struct InitFileTransferParameter
@@ -261,10 +262,10 @@ void * FunctionArray::startDownloadProcedure(void * args)
 		while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
 					(readBytes = read(client, peerIP, ipSize)) > 0 &&
 					(readBytes = read(client, &peerPort, sizeof(uint16_t))) > 0)
-			{
-				peerIP[ipSize] = '\0';
-				peer.push_back(make_pair(peerIP, peerPort));
-			}
+		{
+			peerIP[ipSize] = '\0';
+			peer.push_back(make_pair(peerIP, peerPort));
+		}
 		if(readBytes == -1)
 			readError();
 		if(peer.size() > 0)

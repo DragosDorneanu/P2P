@@ -21,6 +21,18 @@
 #define USER "root"
 #define DB "P2P"
 
+struct ClientThreadParameter
+{
+	int client;
+	sockaddr_in clientInfo;
+
+	ClientThreadParameter(int client, sockaddr_in clientInfo)
+	{
+		this->client = client;
+		this->clientInfo = clientInfo;
+	}
+};
+
 inline void readError() {
 	perror("Read error");
 }
@@ -34,6 +46,7 @@ inline char * getSHA256Hash(char * str)
 	char * hexPassword = new char[65];
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	SHA256_CTX sha;
+
 	SHA256_Init(&sha);
 	SHA256_Update(&sha, str, strlen(str));
 	SHA256_Final(hash, &sha);
@@ -42,21 +55,25 @@ inline char * getSHA256Hash(char * str)
 	return hexPassword;
 }
 
-inline void databaseConnectionError() {
+inline void databaseConnectionError(MYSQL * database)
+{
 	perror("Error while connecting to database...");
+	printf("%s\n", mysql_error(database));
 }
 
-inline void databaseQueryError() {
+inline void databaseQueryError(MYSQL * database)
+{
 	perror("Query error");
+	printf("%s\n", mysql_error(database));
 }
 
 inline void connectToDatabase(MYSQL *& databaseConnection)
 {
 	databaseConnection = mysql_init(NULL);
 	if(databaseConnection == NULL)
-		databaseConnectionError();
+		databaseConnectionError(databaseConnection);
 	if(mysql_real_connect(databaseConnection, HOST, USER, PASSWORD, DB, 0, NULL, 0) == NULL)
-		databaseConnectionError();
+		databaseConnectionError(databaseConnection);
 }
 
 inline MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
@@ -64,13 +81,13 @@ inline MYSQL_RES * query(MYSQL * databaseConnection, char * sqlInstruction)
 	if(mysql_query(databaseConnection, sqlInstruction))
 	{
 		printf("%s\n", sqlInstruction);
-		databaseQueryError();
+		databaseQueryError(databaseConnection);
 	}
 	MYSQL_RES * queryResult = mysql_store_result(databaseConnection);
 	return queryResult;
 }
 
-inline void updateUserStatus(MYSQL * database, struct sockaddr_in clientInfo, int id)
+inline void updateUserStatus(MYSQL * database, sockaddr_in clientInfo, int id)
 {
 	char sqlCommand[100];
 	sprintf(sqlCommand, "update UserStatus set status = 'online', ip = '%s', port = %d where id = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port, id);

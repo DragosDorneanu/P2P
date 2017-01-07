@@ -14,7 +14,6 @@
 #include <cstring>
 #include <unistd.h>
 #include <unordered_set>
-#include "DatabaseQueryParameters.hpp"
 #include "SignInServerProcedure.hpp"
 #include "SignUpServerProcedure.hpp"
 
@@ -73,18 +72,19 @@ bool acceptClient(int &client, int &socketDescriptor, sockaddr_in * from)
 
 void * solveRequest(void * args)
 {
-	DatabaseQueryParameters * parameters = (DatabaseQueryParameters *)args;
-	int client = *(parameters->getClient());
+	ClientThreadParameter * parameters = (ClientThreadParameter *)args;
 	int option;
+	MYSQL * database;
 
 	pthread_detach(pthread_self());
-	if(read(client, &option, 4) == -1)
+	connectToDatabase(database);
+	if(read(parameters->client, &option, 4) == -1)
 		readError();
 	if(option == SIGN_UP)
-		signUpServerProcedure(parameters);
+		signUpServerProcedure(database, parameters);
 	else
-		signInServerProcedure(parameters);
-	close(client);
+		signInServerProcedure(database, parameters);
+	close(parameters->client);
 	mysql_thread_end();
 	return (void *)(NULL);
 }
@@ -103,6 +103,7 @@ int main()
 	listenSocket(socketDescriptor);
 	connectToDatabase(databaseConnection);
 	setAllClientsOffline(databaseConnection);
+	mysql_close(databaseConnection);
 
 	while(true)
 	{
@@ -113,8 +114,8 @@ int main()
 		cout << "Waiting for a client to connect..." << endl;
 		if(!acceptClient(clientSocket, socketDescriptor, &from))
 			continue;
-		DatabaseQueryParameters threadParameters(databaseConnection, &clientSocket, from);
-		pthread_create(&thread, NULL, solveRequest, (void *)&threadParameters);
+		ClientThreadParameter * threadParameters = new ClientThreadParameter(clientSocket, from);
+		pthread_create(&thread, NULL, solveRequest, (void *)threadParameters);
 	}
 	return 0;
 }

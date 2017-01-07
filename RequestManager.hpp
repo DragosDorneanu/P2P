@@ -14,13 +14,13 @@
 class RequestManager
 {
 private:
-	static void downloadProcedure(int &client, MYSQL * database, sockaddr_in clientInfo);
-	static void findProcedure(int &client, MYSQL * database);
-	static void quitProcedure(MYSQL * database, char * clientIP, unsigned int port);
+	static void downloadProcedure(int &client, MYSQL *& database, sockaddr_in clientInfo);
+	static void findProcedure(int &client, MYSQL *& database);
+	static void quitProcedure(MYSQL *& database, char * clientIP, unsigned int port);
 
 public:
 	RequestManager();
-	static void receiveRequests(int &client, MYSQL * database, sockaddr_in clientInfo);
+	static void receiveRequests(int &client, MYSQL *& database, sockaddr_in clientInfo);
 	virtual ~RequestManager();
 };
 

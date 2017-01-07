@@ -29,40 +29,40 @@ void signUpSuccessMessage(int &client)
 		writeError();
 }
 
-void succesfulSignUpProcedure(MYSQL * database, int &client, struct sockaddr_in clientInfo, char * username, char * password)
+void succesfulSignUpProcedure(MYSQL *& database, int &client, sockaddr_in clientInfo, char * username, char * password)
 {
 	signUpSuccessMessage(client);
 	insertInUserInfo(database, username, password);
 	insertInUserStatus(database, clientInfo);
 }
 
-void signUpServerProcedure(DatabaseQueryParameters * parameters)
+void signUpServerProcedure(MYSQL *& database, ClientThreadParameter * parameters)
 {
-	MYSQL * database = parameters->getDatabase();
-	int client = *(parameters->getClient());
 	MYSQL_RES * queryResult;
 	char username[50], password[50], sqlCommand[200];
 	unsigned int sizeOfUsername, sizeOfPassword;
-	pthread_mutex_t dbLock;
+	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
 
-	if(read(client, &sizeOfUsername, 4) == -1 || read(client, username, sizeOfUsername) == -1 ||
-			read(client, &sizeOfPassword, 4) == -1 || read(client, password, sizeOfPassword) == -1)
+	if(read(parameters->client, &sizeOfUsername, 4) == -1 || read(parameters->client, username, sizeOfUsername) == -1 ||
+			read(parameters->client, &sizeOfPassword, 4) == -1 || read(parameters->client, password, sizeOfPassword) == -1)
 	{
-		signUpFailMessage(client);
+		signUpFailMessage(parameters->client);
 		readError();
 	}
 	username[sizeOfUsername] = '\0';
 	password[sizeOfPassword] = '\0';
 	sprintf(sqlCommand, "select username from UserInfo where username = '%s'", username);
+	//pthread_mutex_lock(&dbLock);
 	queryResult = query(database, sqlCommand);
+	//pthread_mutex_unlock(&dbLock);
 	if(mysql_num_rows(queryResult) == 0)
 	{
-		dbLock = PTHREAD_MUTEX_INITIALIZER;
-		pthread_mutex_lock(&dbLock);
-		succesfulSignUpProcedure(database, client, parameters->getClientInfo(), username, password);
-		pthread_mutex_unlock(&dbLock);
+		//pthread_mutex_lock(&dbLock);
+		succesfulSignUpProcedure(database, parameters->client, parameters->clientInfo, username, password);
+		//pthread_mutex_unlock(&dbLock);
 	}
-	else signUpFailMessage(client);
+	else signUpFailMessage(parameters->client);
+	mysql_close(database);
 }
 
 #endif /* SIGNUPSERVERPROCEDURE_HPP_ */
