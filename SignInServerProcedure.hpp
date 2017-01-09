@@ -45,7 +45,7 @@ void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 	MYSQL_RES * queryResult;
 	char username[50], password[50], sqlCommand[300];
 	unsigned int sizeOfUsername, sizeOfPassword;
-	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
 
 	if(read(parameters->client, &parameters->clientInfo.sin_port, sizeof(parameters->clientInfo.sin_port)) == -1 ||
 			read(parameters->client, &sizeOfUsername, 4) == -1 || read(parameters->client, username, sizeOfUsername) == -1 ||
@@ -59,15 +59,11 @@ void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 	sprintf(sqlCommand, "select id from UserInfo where username = '%s' and password = '%s' and id in (select id from UserStatus where status = 'offline')",
 			username, getSHA256Hash(password));
 
-	//pthread_mutex_lock(&dbLock);
 	queryResult = query(database, sqlCommand);
-	//pthread_mutex_unlock(&dbLock);
 
 	if(mysql_num_rows(queryResult))
 	{
-		//pthread_mutex_lock(&dbLock);
 		successfulLoginProcedure(database, parameters->client, parameters->clientInfo, mysql_fetch_row(queryResult));
-		//pthread_mutex_unlock(&dbLock);
 		RequestManager::receiveRequests(parameters->client, database, parameters->clientInfo);
 	}
 	else loginFailMessage(parameters->client);
