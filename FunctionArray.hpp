@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <deque>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
@@ -20,12 +21,14 @@ using namespace std;
 #define FUNCTION pair<string, void(*)(char *)>
 #define ACTIVE_OBJECT pair<string, pair<string, string> >
 #define PEER pair<char *, uint16_t>
+#define UNFINISHED_DOWNLOAD pair<char *, pair<unsigned long long int, unsigned long long int> >
 
 class FunctionArray
 {
 private:
 	static int client, servent;
 	vector<FUNCTION> function;
+	static deque<UNFINISHED_DOWNLOAD> unfinishedDownload;
 	static multiset<ACTIVE_OBJECT> activeList;
 	static short DELETE, DOWNLOAD, FIND, PAUSE, RESUME, QUIT, DOWNLOAD_FINISHED;
 
@@ -40,8 +43,12 @@ private:
 	static void readError();
 	static void writeError();
 	static void quitSignalHandler(int signal);
+	static void * downloadFileChunk(void * args);
+	static void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int startOffset, unsigned long long int endOffset, char * fileID);
 	static void sendFileChunk(int &peer, char fileName[100], unsigned long long int startOffset, unsigned long long int endOffset);
 	static void * startDownloadProcedure(void * args);
+	static bool downloadFinished(char fileID[16]);
+	static void downloadAcknowledgement(char fileID[16]);
 
 public:
 	FunctionArray();
@@ -55,6 +62,7 @@ public:
 	static void setSignalHandler();
 	static int getServent();
 	static void * solveDownloadRequest(void * args);
+	static void finishDownloads();
 };
 
 struct DownloadParameter

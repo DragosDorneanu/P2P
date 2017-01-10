@@ -16,6 +16,7 @@
 #define DOWNLOAD 131
 #define FIND 132
 #define QUIT 135
+#define DOWNLOAD_FINISHED 136
 #define SEARCH_BY_SIZE 20
 #define SEARCH_BY_TYPE 21
 #define SEARCH_BY_NAME 22
@@ -156,6 +157,33 @@ void RequestManager::quitProcedure(MYSQL *& database, char * clientIP, unsigned 
 	query(database, sqlCommand);
 }
 
+void RequestManager::downloadAcknowledgement(int &client, MYSQL *& database, sockaddr_in clientInfo)
+{
+	unsigned int idSize, userID;
+	char fileID[16], getIDQuery[100], getFileInfoQuery[100], insertNewSeeder[200];
+	MYSQL_RES * result;
+	MYSQL_ROW row;
+
+	if(read(client, &idSize, 4) == -1 || read(client, fileID, idSize) == -1)
+	{
+		readError();
+		return;
+	}
+
+	sprintf(getIDQuery, "select id from UserStatus where ip = '%s' and port = %d", inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port);
+	sprintf(getFileInfoQuery, "select distinct FileName, size, HashValue from Files natural join FileID where HashID = %d", atoi(fileID));
+
+	result = query(database, getIDQuery);
+	row = mysql_fetch_row(result);
+	userID = atoi(row[0]);
+
+	result = query(database, getFileInfoQuery);
+	row = mysql_fetch_row(result);
+
+	sprintf(insertNewSeeder, "insert into Files value (%d, '%s', %lld, '%s')", userID, row[0], atoll(row[1]), row[2]);
+	query(database, insertNewSeeder);
+}
+
 void RequestManager::receiveRequests(int &client, MYSQL *& database, sockaddr_in clientInfo)
 {
 	short readStatus, requestType;
@@ -168,6 +196,7 @@ void RequestManager::receiveRequests(int &client, MYSQL *& database, sockaddr_in
 		case DOWNLOAD : downloadProcedure(client, database, clientInfo); break;
 		case FIND : findProcedure(client, database); break;
 		case QUIT : quitProcedure(database, inet_ntoa(clientInfo.sin_addr), clientInfo.sin_port); return;
+		case DOWNLOAD_FINISHED : downloadAcknowledgement(client, database, clientInfo); break;
 		default : ;
 		}
 	}

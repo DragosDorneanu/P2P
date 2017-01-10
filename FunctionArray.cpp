@@ -29,6 +29,8 @@
 #define OPTION pair<int, char *>
 #define PEER pair<char *, uint16_t>
 #define CHUNK_SIZE 10240
+#define START_DOWNLOAD true
+#define FINISH_DOWNLOAD false
 
 using namespace std;
 
@@ -42,6 +44,7 @@ short FunctionArray::RESUME = 134;
 short FunctionArray::QUIT = 135;
 short FunctionArray::DOWNLOAD_FINISHED = 136;
 multiset<ACTIVE_OBJECT> FunctionArray::activeList;
+deque<UNFINISHED_DOWNLOAD> FunctionArray::unfinishedDownload;
 
 struct InitFileTransferParameter
 {
@@ -65,15 +68,31 @@ struct MakeDownloadRequestParameter
 	unsigned int fileNameSize;
 	unsigned long long int startOffset;
 	unsigned long long int endOffset;
-	char fileName[100];
+	char fileName[100], fileID[16];
 
-	MakeDownloadRequestParameter(int reqSocket, unsigned int fileNameLen, char file[100], unsigned long long int sOffset, unsigned long long int eOffset)
+	MakeDownloadRequestParameter(int reqSocket, unsigned int fileNameLen, char file[100], unsigned long long int sOffset, unsigned long long int eOffset, char fileID[16])
 	{
 		requestSocket = reqSocket;
 		fileNameSize = fileNameLen;
 		strcpy(fileName, file);
 		startOffset = sOffset;
 		endOffset = eOffset;
+		strcpy(this->fileID, fileID);
+	}
+};
+
+struct DownloadProcedureParameter
+{
+	char fileID[16];
+	bool type;
+	unsigned long long int startOffset, endOffset;
+
+	DownloadProcedureParameter(char fileID[16], bool type, unsigned long long int startOffset = 0, unsigned long long int endOffset = 0)
+	{
+		strcpy(this->fileID, fileID);
+		this->type = type;
+		this->startOffset = startOffset;
+		this->endOffset = endOffset;
 	}
 };
 
@@ -166,12 +185,20 @@ bool connectRequestSocket(int &requestSocket, sockaddr_in peer)
 	return true;
 }
 
-void * downloadFileChunk(void * args)
+void freeMemory(int &downloadFile, MakeDownloadRequestParameter *& parameter)
+{
+	close(downloadFile);
+	close(parameter->requestSocket);
+	delete parameter;
+}
+
+void * FunctionArray::downloadFileChunk(void * args)
 {
 	int readBytes;
 	char fileChunk[CHUNK_SIZE];
 	MakeDownloadRequestParameter * parameter = (MakeDownloadRequestParameter *)(args);
 	int downloadFile = open(parameter->fileName, O_CREAT | O_WRONLY , 0644);
+	long long int currentOffset;
 
 	lseek(downloadFile, parameter->startOffset, SEEK_SET);
 	if(write(parameter->requestSocket, &parameter->fileNameSize, 4) == -1 ||
@@ -191,11 +218,19 @@ void * downloadFileChunk(void * args)
 			break;
 		}
 	}
+
 	if(readBytes == -1)
+	{
 		perror("Receive file chunk error");
-	close(downloadFile);
-	close(parameter->requestSocket);
-	delete parameter;
+		freeMemory(downloadFile, parameter);
+	}
+	if((currentOffset = lseek(downloadFile, 0, SEEK_CUR)) == -1)
+	{
+		changeOffsetError();
+		freeMemory(downloadFile, parameter);
+	}
+	if((unsigned long long int)currentOffset < parameter->endOffset - 1)
+		unfinishedDownload.push_back(make_pair(parameter->fileID, make_pair(parameter->startOffset, parameter->endOffset)));
 	return (void *)(NULL);
 }
 
@@ -209,12 +244,12 @@ bool createSocket(int &client)
 	return true;
 }
 
-void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int fileSize)
+void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int startOffset, unsigned long long int endOffset, char * fileID)
 {
 	sockaddr_in destinationPeer;
 	unsigned int index;
-	unsigned long long int chunkSize = ceil((double)(fileSize) / (peer.size()));
-	unsigned long long int startOffset = 0, endOffset = chunkSize;
+	unsigned long long int chunkSize = ceil((double)(endOffset - startOffset) / (peer.size()));
+	unsigned long long int peerStartOffset = startOffset, peerEndOffset = startOffset + chunkSize;
 	vector<pthread_t> downloadThread;
 
 	downloadThread.reserve(peer.size());
@@ -233,17 +268,18 @@ void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNa
 		if(!connectRequestSocket(client, destinationPeer))
 			continue;
 
-		parameter = new MakeDownloadRequestParameter(client, fileNameSize, fileName, startOffset, endOffset);
+		parameter = new MakeDownloadRequestParameter(client, fileNameSize, fileName, peerStartOffset, peerEndOffset, fileID);
 		cout << "Connecting to " << peer[index].first << " and port " << peer[index].second << endl;
 		pthread_create(&requestDownloadThread, NULL, downloadFileChunk, (void *)parameter);
 		downloadThread.push_back(requestDownloadThread);
-		startOffset = endOffset;
+		peerStartOffset = peerEndOffset;
+
 		if(peer.size() > 1)
 		{
 			if(index < peer.size() - 2)
-				endOffset += chunkSize;
+				peerEndOffset += chunkSize;
 			else
-				endOffset = fileSize;
+				peerEndOffset = endOffset;
 		}
 	}
 
@@ -251,8 +287,27 @@ void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNa
 		pthread_join(downloadThread[index], (void **)(NULL));
 }
 
+bool FunctionArray::downloadFinished(char fileID[16])
+{
+	for(unsigned int index = 0; index < unfinishedDownload.size(); ++index)
+	{
+		if(strcmp(unfinishedDownload[index].first, fileID) == 0)
+			return false;
+	}
+	return true;
+}
+
+void FunctionArray::downloadAcknowledgement(char fileID[16])
+{
+	unsigned int idSize = strlen(fileID);
+	sendInfoToServer(&DOWNLOAD_FINISHED, 2);
+	sendInfoToServer(&idSize, 4);
+	sendInfoToServer(fileID, idSize);
+}
+
 void * FunctionArray::startDownloadProcedure(void * args)
 {
+	DownloadProcedureParameter * parameter = (DownloadProcedureParameter *)(args);
 	int readBytes, ipSize, fileNameSize;
 	long long int fileSize;
 	char peerIP[15], fileName[100];
@@ -280,9 +335,15 @@ void * FunctionArray::startDownloadProcedure(void * args)
 			readError();
 		if(peer.size() > 0)
 		{
-			cout << fileName << " is downloading" << endl;
-			initFileTransfer(peer, fileName, fileNameSize, fileSize);
+			if(parameter->type == START_DOWNLOAD)
+				cout << fileName << " is downloading" << endl;
+			if(parameter->type == START_DOWNLOAD)
+				initFileTransfer(peer, fileName, fileNameSize, 0, fileSize, parameter->fileID);
+			else
+				initFileTransfer(peer, fileName, fileNameSize, parameter->startOffset, parameter->endOffset, parameter->fileID);
 		}
+		if(downloadFinished(parameter->fileID))
+			downloadAcknowledgement(parameter->fileID);
 	}
 	else cout << "Wanted file has no seeders for the moment..." << endl;
 	return (void *)(NULL);
@@ -301,7 +362,8 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 		sendInfoToServer(fileID, idSize);
 
 		pthread_t startDownloadProcedureThread;
-		pthread_create(&startDownloadProcedureThread, NULL, startDownloadProcedure, (void *)(NULL));
+		DownloadProcedureParameter * parameter = new DownloadProcedureParameter(fileID, START_DOWNLOAD);
+		pthread_create(&startDownloadProcedureThread, NULL, startDownloadProcedure, (void *)parameter);
 		sleep(1);
 	}
 	else cout << "Wrong arguments : ID must contain only digits and must have size greater than 0" << endl;
@@ -541,4 +603,26 @@ void * FunctionArray::solveDownloadRequest(void * args)
 	sendFileChunk(parameter->peer, fileName, startOffset, endOffset);
 	close(parameter->peer);
 	return (void *)(NULL);
+}
+
+void FunctionArray::finishDownloads()
+{
+	unsigned int idSize;
+	while(true)
+	{
+		for(unsigned int index = 0; index < unfinishedDownload.size(); ++index)
+		{
+			sendInfoToServer(&DOWNLOAD, 2);
+			idSize = strlen(unfinishedDownload[index].first);
+			sendInfoToServer(&idSize, 4);
+			sendInfoToServer(unfinishedDownload[index].first, idSize);
+
+			pthread_t startDownloadProcedureThread;
+			DownloadProcedureParameter * parameter = new DownloadProcedureParameter(unfinishedDownload[index].first,
+																					FINISH_DOWNLOAD,
+																					unfinishedDownload[index].second.first,
+																					unfinishedDownload[index].second.second);
+			pthread_create(&startDownloadProcedureThread, NULL, startDownloadProcedure, (void *)parameter);
+		}
+	}
 }

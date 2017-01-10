@@ -86,13 +86,19 @@ void * acceptDownloadRequests(void * args)
 	return (void *)(NULL);
 }
 
+void * checkUnfinishedDownloads(void * args)
+{
+	FunctionArray::finishDownloads();
+	return (void *)(NULL);
+}
+
 void signInProcedure(int &client, int &servent)
 {
 	char username[50], password[50], downloadPath[512];
 	unsigned int usernameSize, passwordSize, signinStatus;
 	ifstream configFile("path.conf");
 	FunctionArray commandArray;
-	pthread_t makeRequestThread, acceptDownloadRequestThread, fileShareThread;
+	pthread_t makeRequestThread, acceptDownloadRequestThread, fileShareThread, checkUnfinishedDownloadThread;
 
 	commandArray.setClient(client);
 	commandArray.setServent(servent);
@@ -112,12 +118,17 @@ void signInProcedure(int &client, int &servent)
 	{
 		FileShareParameter * parameter = new FileShareParameter(client, downloadPath);
 		pthread_create(&fileShareThread, NULL, shareFiles, (void *)parameter);
+		sleep(3);
 		cout << "You have signed in successfully!!!" << endl;
 		chdir(downloadPath);
+
 		pthread_create(&makeRequestThread, NULL, makeRequests, (void *)&commandArray);
 		pthread_create(&acceptDownloadRequestThread, NULL, acceptDownloadRequests, (void *)&commandArray);
+		pthread_create(&checkUnfinishedDownloadThread, NULL, checkUnfinishedDownloads, (void *)NULL);
+
 		pthread_join(makeRequestThread, (void **)NULL);
 		pthread_join(acceptDownloadRequestThread, (void **)NULL);
+		pthread_join(checkUnfinishedDownloadThread, (void **)NULL);
 		delete parameter;
 	}
 	else
