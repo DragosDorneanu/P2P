@@ -323,6 +323,7 @@ void * FunctionArray::startDownloadProcedure(void * args)
 		if(read(client, fileName, fileNameSize) == -1 || read(client, &fileSize, 8) == -1)
 			readError();
 		fileName[fileNameSize] = '\0';
+		activeList.insert(make_pair(fileName, make_pair("downloading", "0.0%")));
 
 		while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
 					(readBytes = read(client, peerIP, ipSize)) > 0 &&
@@ -343,9 +344,12 @@ void * FunctionArray::startDownloadProcedure(void * args)
 				initFileTransfer(peer, fileName, fileNameSize, parameter->startOffset, parameter->endOffset, parameter->fileID);
 		}
 		if(downloadFinished(parameter->fileID))
+		{
+			activeList.erase(activeList.find(make_pair(fileName, make_pair("downloading", "0.0%"))));
 			downloadAcknowledgement(parameter->fileID);
+		}
 	}
-	else cout << "Wanted file has no seeders for the moment..." << endl;
+	else cout << "Wanted file does not exist..." << endl;
 	return (void *)(NULL);
 }
 
@@ -594,6 +598,7 @@ void * FunctionArray::solveDownloadRequest(void * args)
 	if(read(parameter->peer, &fileNameSize, 4) == -1 || read(parameter->peer, fileName, fileNameSize) == -1)
 		readError();
 	fileName[fileNameSize] = '\0';
+	activeList.insert(make_pair(fileName, make_pair("seeding", "")));
 	cout << endl << "Request : " << endl;
 	cout << "File name : " << fileName << endl;
 	cout << "From : " << "IP " << inet_ntoa(parameter->from.sin_addr) << " PORT " << parameter->from.sin_port << endl;
@@ -602,6 +607,7 @@ void * FunctionArray::solveDownloadRequest(void * args)
 	cout << "Chunck Range : " << startOffset << " => " << endOffset << endl;
 	sendFileChunk(parameter->peer, fileName, startOffset, endOffset);
 	close(parameter->peer);
+	activeList.erase(activeList.find(make_pair(fileName, make_pair("seeding", ""))));
 	return (void *)(NULL);
 }
 
