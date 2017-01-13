@@ -12,6 +12,7 @@
 #include <string>
 #include <set>
 #include <deque>
+#include <cstring>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
@@ -21,14 +22,41 @@ using namespace std;
 #define FUNCTION pair<string, void(*)(char *)>
 #define ACTIVE_OBJECT pair<string, pair<string, string> >
 #define PEER pair<char *, uint16_t>
-#define UNFINISHED_DOWNLOAD pair<char *, pair<unsigned long long int, unsigned long long int> >
+
+struct DownloadProcedureParameter
+{
+	char fileID[16];
+	bool type;
+	unsigned long long int startOffset, endOffset;
+
+	DownloadProcedureParameter(char fileID[16], bool type, unsigned long long int startOffset = 0, unsigned long long int endOffset = 0)
+	{
+		strcpy(this->fileID, fileID);
+		this->type = type;
+		this->startOffset = startOffset;
+		this->endOffset = endOffset;
+	}
+};
+
+struct PeerComparator
+{
+	int operator()(PEER peer1, PEER peer2)
+	{
+		unsigned int difference = strcmp(peer1.first, peer2.first);
+		if(difference == 0)
+			return peer1.second < peer2.second;
+		else
+			return difference < 0;
+	}
+};
 
 class FunctionArray
 {
 private:
 	static int client, servent;
 	vector<FUNCTION> function;
-	static deque<UNFINISHED_DOWNLOAD> unfinishedDownload;
+	static set<PEER, PeerComparator> alreadyConnected;
+	static deque<DownloadProcedureParameter> unfinishedDownload;
 	static multiset<ACTIVE_OBJECT> activeList;
 	static short DELETE, DOWNLOAD, FIND, PAUSE, RESUME, QUIT, DOWNLOAD_FINISHED;
 

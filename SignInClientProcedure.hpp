@@ -66,7 +66,7 @@ bool acceptClient(int &client, int &socketDescriptor, sockaddr_in * from)
 
 void * acceptDownloadRequests(void * args)
 {
-	int servent, readBytes;
+	int servent;
 	FunctionArray * commandArray = (FunctionArray *)(args);
 
 	servent = commandArray->getServent();
@@ -81,8 +81,6 @@ void * acceptDownloadRequests(void * args)
 		DownloadParameter parameter(peer, from);
 		pthread_create(&thread, NULL, FunctionArray::solveDownloadRequest, &parameter);
 	}
-	if(readBytes == -1)
-		readError();
 	return (void *)(NULL);
 }
 

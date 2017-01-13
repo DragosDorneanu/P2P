@@ -33,7 +33,7 @@ void createSocket(int &socketDescriptor)
 	}
 }
 
-void setServerInformation(struct sockaddr_in &server)
+void setServerInformation( sockaddr_in &server)
 {
 	bzero(&server, sizeof(server));
 	server.sin_family = AF_INET;
@@ -41,9 +41,9 @@ void setServerInformation(struct sockaddr_in &server)
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 }
 
-void bindServer(int &socketDescriptor, struct sockaddr_in * server)
+void bindServer(int &socketDescriptor,  sockaddr_in * server)
 {
-	if(bind(socketDescriptor, (struct sockaddr *)server, sizeof(struct sockaddr)) == -1)
+	if(bind(socketDescriptor, ( sockaddr *)server, sizeof( sockaddr)) == -1)
 	{
 		perror("Error while binding server");
 		exit(EXIT_FAILURE);
@@ -92,7 +92,7 @@ void * solveRequest(void * args)
 int main()
 {
 	int socketDescriptor, enableReuse = 1;
-	struct sockaddr_in server;
+	sockaddr_in server;
 	MYSQL * databaseConnection;
 
 	createSocket(socketDescriptor);
