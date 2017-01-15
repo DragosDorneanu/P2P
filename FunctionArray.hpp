@@ -20,7 +20,6 @@ using namespace std;
 
 #define MAX_COMMAND_SIZE 1024
 #define FUNCTION pair<string, void(*)(char *)>
-#define ACTIVE_OBJECT pair<string, pair<string, string> >
 #define PEER pair<char *, uint16_t>
 
 struct DownloadProcedureParameter
@@ -50,6 +49,31 @@ struct PeerComparator
 	}
 };
 
+struct ActiveObject
+{
+	string fileName;
+	string status;
+	double percentage;
+	string fileID;
+
+	ActiveObject(string fileName, string status = "seeding", double percentage = 0.0, string fileID = "")
+	{
+		this->fileName = fileName;
+		this->status = status;
+		this->percentage = percentage;
+		this->fileID = fileID;
+	}
+};
+
+struct ActiveObjectComparator
+{
+	int operator()(ActiveObject obj1, ActiveObject obj2)
+	{
+		int difference = obj1.fileID.compare(obj2.fileID);
+		return difference < 0;
+	}
+};
+
 class FunctionArray
 {
 private:
@@ -57,8 +81,8 @@ private:
 	vector<FUNCTION> function;
 	static set<PEER, PeerComparator> alreadyConnected;
 	static deque<DownloadProcedureParameter> unfinishedDownload;
-	static multiset<ACTIVE_OBJECT> activeList;
-	static short DELETE, DOWNLOAD, FIND, PAUSE, RESUME, QUIT, DOWNLOAD_FINISHED;
+	static set<ActiveObject, ActiveObjectComparator> activeList;
+	static short DOWNLOAD, FIND, QUIT, DOWNLOAD_FINISHED;
 
 	static void sendInfoToServer(void * data, unsigned int dataSize);
 	static void displayActiveList(char command[MAX_COMMAND_SIZE]);
