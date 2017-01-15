@@ -78,8 +78,8 @@ void * acceptDownloadRequests(void * args)
 
 		if(!acceptClient(peer, servent, &from))
 			continue;
-		DownloadParameter parameter(peer, from);
-		pthread_create(&thread, NULL, FunctionArray::solveDownloadRequest, &parameter);
+		DownloadParameter * parameter = new DownloadParameter(peer, from);
+		pthread_create(&thread, NULL, FunctionArray::solveDownloadRequest, parameter);
 	}
 	return (void *)(NULL);
 }

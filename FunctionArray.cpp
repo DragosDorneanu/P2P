@@ -540,6 +540,12 @@ bool sendFileChunkToPeer(int &peer, char fileChunk[CHUNK_SIZE], unsigned int chu
 	return true;
 }
 
+void freeMemory(int &peer, int &file)
+{
+	close(peer);
+	close(file);
+}
+
 void FunctionArray::sendFileChunk(int &peer, char fileName[100], unsigned long long int startOffset, unsigned long long int endOffset)
 {
 	int file, readBytes;
@@ -549,12 +555,13 @@ void FunctionArray::sendFileChunk(int &peer, char fileName[100], unsigned long l
 	if((file = open(fileName, O_RDONLY)) == -1)
 	{
 		openError(fileName);
+		close(peer);
 		return;
 	}
 	if(lseek(file, startOffset, SEEK_SET) == -1)
 	{
 		changeOffsetError();
-		close(file);
+		freeMemory(peer, file);
 		return;
 	}
 	while((currentOffset = lseek(file, 0, SEEK_CUR)) != -1 &&
@@ -563,26 +570,27 @@ void FunctionArray::sendFileChunk(int &peer, char fileName[100], unsigned long l
 		if((readBytes = readFileChunk(file, fileChunk, CHUNK_SIZE)) == -1 ||
 				!sendFileChunkToPeer(peer, fileChunk, readBytes))
 		{
-			close(file);
+			freeMemory(peer, file);
 			return;
 		}
 	}
 	if(currentOffset == -1)
 	{
 		changeOffsetError();
-		close(file);
+		freeMemory(peer, file);
 		return;
 	}
 	if((unsigned long long int)currentOffset < endOffset)
 	{
-		if(readFileChunk(file, fileChunk, endOffset - currentOffset) == -1 || !sendFileChunkToPeer(peer, fileChunk, endOffset - currentOffset))
+		if(readFileChunk(file, fileChunk, endOffset - currentOffset) == -1 ||
+				!sendFileChunkToPeer(peer, fileChunk, endOffset - currentOffset))
 		{
-			close(file);
+			freeMemory(peer, file);
 			return;
 		}
 	}
 	cout << "Sent !!!" << endl;
-	close(file);
+	freeMemory(peer, file);
 }
 
 void * FunctionArray::solveDownloadRequest(void * args)
@@ -605,7 +613,6 @@ void * FunctionArray::solveDownloadRequest(void * args)
 		readError();
 	cout << "Chunck Range : " << startOffset << " => " << endOffset << endl;
 	sendFileChunk(parameter->peer, fileName, startOffset, endOffset);
-	close(parameter->peer);
 	activeList.erase(activeList.find(make_pair(fileName, make_pair("seeding", ""))));
 	return (void *)(NULL);
 }
