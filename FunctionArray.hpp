@@ -74,11 +74,26 @@ struct ActiveObjectComparator
 	}
 };
 
+struct ActiveObjectThread
+{
+	string fileID;
+	pthread_t thread;
+	bool active;
+
+	ActiveObjectThread(string fileID, pthread_t thread, bool active = true)
+	{
+		this->fileID = fileID;
+		this->thread = thread;
+		this->active = active;
+	}
+};
+
 class FunctionArray
 {
 private:
 	static int client, servent;
 	vector<FUNCTION> function;
+	static deque<ActiveObjectThread> activeDownload;
 	static set<PEER, PeerComparator> alreadyConnected;
 	static deque<DownloadProcedureParameter> unfinishedDownload;
 	static set<ActiveObject, ActiveObjectComparator> activeList;
@@ -101,6 +116,8 @@ private:
 	static void * startDownloadProcedure(void * args);
 	static bool downloadFinished(char fileID[16]);
 	static void downloadAcknowledgement(char fileID[16]);
+	static void deleteFromActiveDownload(ActiveObjectThread obj);
+	static ActiveObjectThread * getActiveObjectThread(pthread_t threadID);
 
 public:
 	FunctionArray();

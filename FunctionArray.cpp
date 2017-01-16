@@ -40,6 +40,8 @@ short FunctionArray::DOWNLOAD = 131;
 short FunctionArray::FIND = 132;
 short FunctionArray::QUIT = 135;
 short FunctionArray::DOWNLOAD_FINISHED = 136;
+
+deque<ActiveObjectThread> FunctionArray::activeDownload;
 set<PEER, PeerComparator> FunctionArray::alreadyConnected;
 set<ActiveObject, ActiveObjectComparator> FunctionArray::activeList;
 deque<DownloadProcedureParameter> FunctionArray::unfinishedDownload;
@@ -68,13 +70,13 @@ struct MakeDownloadRequestParameter
 	unsigned long long int endOffset;
 	char fileName[100], fileID[16];
 
-	MakeDownloadRequestParameter(int reqSocket, unsigned int fileNameLen, char file[100], unsigned long long int sOffset, unsigned long long int eOffset, char fileID[16])
+	MakeDownloadRequestParameter(int requestSocket, unsigned int fileNameSize, char fileName[100], unsigned long long int startOffset, unsigned long long int endOffset, char fileID[16])
 	{
-		requestSocket = reqSocket;
-		fileNameSize = fileNameLen;
-		strcpy(fileName, file);
-		startOffset = sOffset;
-		endOffset = eOffset;
+		this->requestSocket = requestSocket;
+		this->fileNameSize = fileNameSize;
+		strcpy(this->fileName, fileName);
+		this->startOffset = startOffset;
+		this->endOffset = endOffset;
 		strcpy(this->fileID, fileID);
 	}
 };
@@ -168,6 +170,16 @@ bool connectRequestSocket(int &requestSocket, sockaddr_in peer)
 	return true;
 }
 
+ActiveObjectThread * FunctionArray::getActiveObjectThread(pthread_t threadID)
+{
+	for(unsigned int index = 0; index < activeDownload.size(); ++index)
+	{
+		if(activeDownload[index].thread == threadID)
+			return &activeDownload[index];
+	}
+	return (ActiveObjectThread *)NULL;
+}
+
 void * FunctionArray::downloadFileChunk(void * args)
 {
 	int readBytes;
@@ -177,10 +189,10 @@ void * FunctionArray::downloadFileChunk(void * args)
 	long long int currentOffset;
 	sockaddr_in peerInfo;
 	unsigned int peerInfoSize = sizeof(sockaddr);
+	ActiveObjectThread * activeDownloadThread = getActiveObjectThread(pthread_self());
 
 	getpeername(parameter->requestSocket, (sockaddr *)&peerInfo, &peerInfoSize);
 	lseek(downloadFile, parameter->startOffset, SEEK_SET);
-
 	if(write(parameter->requestSocket, &parameter->fileNameSize, 4) == -1 ||
 			write(parameter->requestSocket, parameter->fileName, parameter->fileNameSize) == -1 ||
 			write(parameter->requestSocket, &parameter->startOffset, 8) == -1 ||
@@ -190,14 +202,22 @@ void * FunctionArray::downloadFileChunk(void * args)
 		return (void *)(NULL);
 	}
 
-	while((readBytes = read(parameter->requestSocket, fileChunk, CHUNK_SIZE)) > 0)
+	do
 	{
-		if(write(downloadFile, fileChunk, readBytes) == -1)
+		while(activeDownloadThread->active &&
+				(readBytes = read(parameter->requestSocket, fileChunk, CHUNK_SIZE)) > 0)
 		{
-			perror("Write file chunk error");
-			break;
+			if(write(downloadFile, fileChunk, readBytes) == -1)
+			{
+				perror("Write file chunk error");
+				break;
+			}
 		}
-	}
+		if(readBytes == -1)
+			break;
+		while(!activeDownloadThread->active) { }
+
+	} while(readBytes > 0);
 
 	if(readBytes == -1)
 		perror("Receive file chunk error");
@@ -222,6 +242,17 @@ bool createSocket(int &client)
 	return true;
 }
 
+void FunctionArray::deleteFromActiveDownload(ActiveObjectThread obj)
+{
+	for(auto it = activeDownload.begin(); it != activeDownload.end(); ++it)
+	{
+		if(it->thread == obj.thread && it->fileID == obj.fileID)
+		{
+			activeDownload.erase(it);
+			return;
+		}
+	}
+}
 
 void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int startOffset, unsigned long long int endOffset, char * fileID)
 {
@@ -230,7 +261,7 @@ void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsi
 	unsigned long long int chunkSize = ceil((double)(endOffset - startOffset) / (peer.size()));
 	unsigned long long int peerStartOffset = startOffset, peerEndOffset = startOffset + chunkSize;
 	vector<pthread_t> downloadThread;
-	set<PEER>::iterator found;
+	deque<ActiveObjectThread>::iterator found;
 
 	downloadThread.reserve(peer.size());
 	destinationPeer.sin_family = AF_INET;
@@ -253,6 +284,7 @@ void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsi
 		cout << "Connecting to " << peer[index].first << " and port " << peer[index].second << endl;
 		pthread_create(&requestDownloadThread, NULL, downloadFileChunk, (void *)parameter);
 		downloadThread.push_back(requestDownloadThread);
+		activeDownload.push_back(ActiveObjectThread(fileID, requestDownloadThread));
 		peerStartOffset = peerEndOffset;
 
 		if(peer.size() > 1)
@@ -263,8 +295,12 @@ void FunctionArray::initFileTransfer(vector<PEER> peer, char fileName[100], unsi
 				peerEndOffset = endOffset;
 		}
 	}
+
 	for(index = 0; index < downloadThread.size(); ++index)
+	{
 		pthread_join(downloadThread[index], (void **)(NULL));
+		deleteFromActiveDownload(ActiveObjectThread(fileID, downloadThread[index]));
+	}
 }
 
 bool FunctionArray::downloadFinished(char fileID[16])
@@ -457,9 +493,25 @@ void FunctionArray::find(char command[MAX_COMMAND_SIZE])
 	else cout << "A file name is needed..." << endl;
 }
 
-void FunctionArray::pause(char command[MAX_COMMAND_SIZE]) { }
+void FunctionArray::pause(char command[MAX_COMMAND_SIZE])
+{
+	string toPauseFileID(command);
+	for(unsigned int index = 0; index < activeDownload.size(); ++index)
+	{
+		if(activeDownload[index].fileID == toPauseFileID)
+			activeDownload[index].active = false;
+	}
+}
 
-void FunctionArray::resume(char command[MAX_COMMAND_SIZE]) { }
+void FunctionArray::resume(char command[MAX_COMMAND_SIZE])
+{
+	string toResumeFileID(command);
+	for(unsigned int index = 0; index < activeDownload.size(); ++index)
+	{
+		if(activeDownload[index].fileID == toResumeFileID)
+			activeDownload[index].active = true;
+	}
+}
 
 FunctionArray::FunctionArray()
 {
