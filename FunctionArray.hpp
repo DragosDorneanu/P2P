@@ -20,7 +20,20 @@ using namespace std;
 
 #define MAX_COMMAND_SIZE 1024
 #define FUNCTION pair<string, void(*)(char *)>
-#define PEER pair<char *, uint16_t>
+
+struct Peer
+{
+	string ip;
+	uint16_t port;
+	string fileID;
+
+	Peer(string ip, uint16_t port, string fileID = "")
+	{
+		this->ip = ip;
+		this->port = port;
+		this->fileID = fileID;
+	}
+};
 
 struct DownloadProcedureParameter
 {
@@ -39,11 +52,11 @@ struct DownloadProcedureParameter
 
 struct PeerComparator
 {
-	int operator()(PEER peer1, PEER peer2)
+	int operator()(Peer peer1, Peer peer2)
 	{
-		unsigned int difference = strcmp(peer1.first, peer2.first);
+		unsigned int difference = peer1.ip.compare(peer2.ip);
 		if(difference == 0)
-			return peer1.second < peer2.second;
+			return peer1.port < peer2.port;
 		else
 			return difference < 0;
 	}
@@ -94,7 +107,7 @@ private:
 	static int client, servent;
 	vector<FUNCTION> function;
 	static deque<ActiveObjectThread> activeDownload;
-	static set<PEER, PeerComparator> alreadyConnected;
+	static set<Peer, PeerComparator> alreadyConnected;
 	static deque<DownloadProcedureParameter> unfinishedDownload;
 	static set<ActiveObject, ActiveObjectComparator> activeList;
 	static short DOWNLOAD, FIND, QUIT, DOWNLOAD_FINISHED;
@@ -111,7 +124,7 @@ private:
 	static void writeError();
 	static void quitSignalHandler(int signal);
 	static void * downloadFileChunk(void * args);
-	static void initFileTransfer(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int startOffset, unsigned long long int endOffset, char * fileID);
+	static void initFileTransfer(vector<Peer> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int startOffset, unsigned long long int endOffset, char * fileID);
 	static void sendFileChunk(int &peer, char fileName[100], unsigned long long int startOffset, unsigned long long int endOffset);
 	static void * startDownloadProcedure(void * args);
 	static bool downloadFinished(char fileID[16]);
