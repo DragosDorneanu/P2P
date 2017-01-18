@@ -21,6 +21,7 @@
 
 #include "ValidationProcedures.hpp"
 #include "FunctionArray.hpp"
+#include "ConnectionEncryptor.hpp"
 
 #define SIGN_IN_ERROR 4
 #define SIGN_IN_SUCCESS 5
@@ -97,18 +98,20 @@ void signInProcedure(int &client, int &servent)
 	ifstream configFile("path.conf");
 	FunctionArray commandArray;
 	pthread_t makeRequestThread, acceptDownloadRequestThread, fileShareThread, checkUnfinishedDownloadThread;
+	ConnectionEncryptor encryptor(client);
 
 	commandArray.setClient(client);
 	commandArray.setServent(servent);
 	commandArray.setSignalHandler();
 
+	encryptor.receivePublicKey();
 	cin.ignore(1, '\n');
 	cout << "Username : ";
 	cin.getline(username, 50);
 	usernameSize = strlen(username);
 	readPasswordInHiddenMode(password, passwordSize);
 
-	sendUserInfoToServer(client, usernameSize, username, passwordSize, password);
+	sendUserInfoToServer(encryptor, usernameSize, username, passwordSize, password);
 	if(read(client, &signinStatus, 4) == -1)
 		readError();
 	configFile.getline(downloadPath, 512);
@@ -116,7 +119,7 @@ void signInProcedure(int &client, int &servent)
 	{
 		FileShareParameter * parameter = new FileShareParameter(client, downloadPath);
 		pthread_create(&fileShareThread, NULL, shareFiles, (void *)parameter);
-		sleep(3);
+		sleep(5);
 		cout << "You have signed in successfully!!!" << endl;
 		chdir(downloadPath);
 

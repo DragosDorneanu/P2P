@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "database_operation.hpp"
+#include "ConnectionDecryptor.hpp"
 
 #define SIGN_UP_ERROR 3
 #define SIGN_UP_SUCCESS 6
@@ -40,28 +41,44 @@ void signUpServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 {
 	MYSQL_RES * queryResult;
 	char username[50], password[50], sqlCommand[200];
-	unsigned int sizeOfUsername, sizeOfPassword;
-	//pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
+	ConnectionDecryptor decryptor(parameters->client);
 
-	if(read(parameters->client, &sizeOfUsername, 4) == -1 || read(parameters->client, username, sizeOfUsername) == -1 ||
-			read(parameters->client, &sizeOfPassword, 4) == -1 || read(parameters->client, password, sizeOfPassword) == -1)
+	if(!decryptor.sendPublicKey())
+	{
+		signUpFailMessage(parameters->client);
+		return;
+	}
+
+	if(!decryptor.receiveEncryptedMessage())
 	{
 		signUpFailMessage(parameters->client);
 		readError();
 	}
-	username[sizeOfUsername] = '\0';
-	password[sizeOfPassword] = '\0';
-	sprintf(sqlCommand, "select username from UserInfo where username = '%s'", username);
-	//pthread_mutex_lock(&dbLock);
-	queryResult = query(database, sqlCommand);
-	//pthread_mutex_unlock(&dbLock);
-	if(mysql_num_rows(queryResult) == 0)
+	if(!decryptor.decrypt())
 	{
-		//pthread_mutex_lock(&dbLock);
-		succesfulSignUpProcedure(database, parameters->client, parameters->clientInfo, username, password);
-		//pthread_mutex_unlock(&dbLock);
+		signUpFailMessage(parameters->client);
+		return;
 	}
-	else signUpFailMessage(parameters->client);
+	strcpy(username, decryptor.getDecryptedMessage());
+
+	if(!decryptor.receiveEncryptedMessage())
+	{
+		signUpFailMessage(parameters->client);
+		readError();
+	}
+	if(!decryptor.decrypt())
+	{
+		signUpFailMessage(parameters->client);
+		return;
+	}
+	strcpy(password, decryptor.getDecryptedMessage());
+
+	sprintf(sqlCommand, "select username from UserInfo where username = '%s'", username);
+	queryResult = query(database, sqlCommand);
+	if(mysql_num_rows(queryResult) == 0)
+		succesfulSignUpProcedure(database, parameters->client, parameters->clientInfo, username, password);
+	else
+		signUpFailMessage(parameters->client);
 	mysql_close(database);
 }
 

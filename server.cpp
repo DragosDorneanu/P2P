@@ -16,6 +16,7 @@
 #include <unordered_set>
 #include "SignInServerProcedure.hpp"
 #include "SignUpServerProcedure.hpp"
+#include "ConnectionDecryptor.hpp"
 
 #define PORT 1234
 #define BACKLOG_SIZE 10
@@ -78,6 +79,7 @@ void * solveRequest(void * args)
 
 	pthread_detach(pthread_self());
 	connectToDatabase(database);
+
 	if(read(parameters->client, &option, 4) == -1)
 		readError();
 	if(option == SIGN_UP)
@@ -114,7 +116,9 @@ int main()
 		cout << "Waiting for a client to connect..." << endl;
 		if(!acceptClient(clientSocket, socketDescriptor, &from))
 			continue;
+
 		ClientThreadParameter * threadParameters = new ClientThreadParameter(clientSocket, from);
+		cout << 1 << endl;
 		pthread_create(&thread, NULL, solveRequest, (void *)threadParameters);
 	}
 	return 0;

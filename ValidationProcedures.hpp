@@ -19,6 +19,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <pthread.h>
+#include "ConnectionEncryptor.hpp"
 
 using namespace std;
 
@@ -60,12 +61,12 @@ void readPasswordInHiddenMode(char password[50], unsigned int &size)
 	size = strlen(password);
 }
 
-void sendUserInfoToServer(int &client, unsigned int userSize, char username[50], unsigned int passwordSize, char password[50])
+void sendUserInfoToServer(ConnectionEncryptor encryptor, unsigned int userSize, char username[50], unsigned int passwordSize, char password[50])
 {
-	if(write(client, &userSize, 4) == -1 || write(client, username, userSize) == -1)
-		writeError();
-	if(write(client, &passwordSize, 4) == -1 || write(client, password, passwordSize) == -1)
-		writeError();
+	if(!encryptor.encrypt(username, userSize) || !encryptor.sendEncryptedMessage())
+		exit(EXIT_FAILURE);
+	if(!encryptor.encrypt(password, passwordSize) || !encryptor.sendEncryptedMessage())
+		exit(EXIT_FAILURE);
 }
 
 bool statFile(struct stat &fileStatus, char path[512])
@@ -83,26 +84,26 @@ bool statFile(struct stat &fileStatus, char path[512])
 	return true;
 }
 
-bool hashFile(char * file, char fileHash[65])
+bool hashFile(char * file, char fileHash[42])
 {
-	unsigned char shaData[SHA256_DIGEST_LENGTH];
-	char data[5121];
+	unsigned char shaData[SHA_DIGEST_LENGTH];
+	char data[20480];
 	int bytes, toHashFile;
-	SHA256_CTX sha;
+	SHA_CTX sha;
 	pthread_mutex_t fileLock = PTHREAD_MUTEX_INITIALIZER;
 
 	if((toHashFile = open(file, O_RDONLY, 0600)) == -1)
 		return false;
 
 	pthread_mutex_lock(&fileLock);
-	SHA256_Init(&sha);
-	while((bytes = read(toHashFile, data, 5120)) > 0)
-		SHA256_Update(&sha, data, bytes);
+	SHA1_Init(&sha);
+	while((bytes = read(toHashFile, data, 20480)) > 0)
+		SHA1_Update(&sha, data, bytes);
 	if(bytes == -1)
 		readError();
 	pthread_mutex_unlock(&fileLock);
-	SHA256_Final(shaData, &sha);
-	for(bytes = 0; bytes < SHA256_DIGEST_LENGTH; ++bytes)
+	SHA1_Final(shaData, &sha);
+	for(bytes = 0; bytes < SHA_DIGEST_LENGTH; ++bytes)
 		sprintf(fileHash + 2 * bytes, "%02x", shaData[bytes]);
 	return true;
 }
@@ -125,7 +126,7 @@ bool listDirectory(int &client, char * currentDirectory)
 	dirent * file;
 	unsigned int size, hashSize;
 	struct stat fileStatus;
-	char newPath[512], fileHash[65];
+	char newPath[512], fileHash[42];
 
 	if((directory = opendir(currentDirectory)) == NULL)
 		return false;

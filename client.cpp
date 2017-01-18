@@ -14,6 +14,7 @@
 
 #include "SignInClientProcedure.hpp"
 #include "SignUpClientProcedure.hpp"
+#include "ConnectionEncryptor.hpp"
 
 #define SERVENT_PORT 0
 #define SERVER_IP "127.0.0.1"
@@ -109,7 +110,6 @@ int main()
 
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 	setsockopt(socketDescriptor, SOL_SOCKET, SO_REUSEPORT, &enableReuse, 4);
-	//setsockopt(servent, SOL_SOCKET, SO_REUSEADDR, &enableReuse, 4);
 
 	bindClientServer(servent, clientServer);
 	listenServent(servent);
@@ -118,6 +118,7 @@ int main()
 
 	if(write(socketDescriptor, &option, 4) == -1)
 		writeError();
+	cout << 1 << endl;
 	if(option == 1)
 		signUpProcedure(socketDescriptor);
 	else

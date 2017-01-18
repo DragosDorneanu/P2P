@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include "database_operation.hpp"
 #include "RequestManager.hpp"
+#include "ConnectionDecryptor.hpp"
 
 #define SIGN_IN_ERROR 4
 #define SIGN_IN_SUCCESS 5
@@ -44,23 +45,29 @@ void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 {
 	MYSQL_RES * queryResult;
 	char username[50], password[50], sqlCommand[300];
-	unsigned int sizeOfUsername, sizeOfPassword;
-	pthread_mutex_t dbLock = PTHREAD_MUTEX_INITIALIZER;
+	ConnectionDecryptor decryptor(parameters->client);
 
+	decryptor.sendPublicKey();
 	if(read(parameters->client, &parameters->clientInfo.sin_port, sizeof(parameters->clientInfo.sin_port)) == -1 ||
-			read(parameters->client, &sizeOfUsername, 4) == -1 || read(parameters->client, username, sizeOfUsername) == -1 ||
-			read(parameters->client, &sizeOfPassword, 4) == -1 || read(parameters->client, password, sizeOfPassword) == -1)
+			!decryptor.receiveEncryptedMessage())
+	{
+			loginFailMessage(parameters->client);
+			readError();
+	}
+	decryptor.decrypt();
+	strcpy(username, decryptor.getDecryptedMessage());
+
+	if(!decryptor.receiveEncryptedMessage())
 	{
 		loginFailMessage(parameters->client);
 		readError();
 	}
-	username[sizeOfUsername] = '\0';
-	password[sizeOfPassword] = '\0';
+	decryptor.decrypt();
+	strcpy(password, decryptor.getDecryptedMessage());
+
 	sprintf(sqlCommand, "select id from UserInfo where username = '%s' and password = '%s' and id in (select id from UserStatus where status = 'offline')",
-			username, getSHA256Hash(password));
-
+			username, getSHAHash(password));
 	queryResult = query(database, sqlCommand);
-
 	if(mysql_num_rows(queryResult))
 	{
 		successfulLoginProcedure(database, parameters->client, parameters->clientInfo, mysql_fetch_row(queryResult));

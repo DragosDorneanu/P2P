@@ -41,15 +41,15 @@ inline void writeError() {
 	perror("Write error");
 }
 
-inline char * getSHA256Hash(char * str)
+inline char * getSHAHash(char * str)
 {
 	char * hexPassword = new char[65];
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	SHA256_CTX sha;
+	unsigned char hash[SHA_DIGEST_LENGTH];
+	SHA_CTX sha;
 
-	SHA256_Init(&sha);
-	SHA256_Update(&sha, str, strlen(str));
-	SHA256_Final(hash, &sha);
+	SHA1_Init(&sha);
+	SHA1_Update(&sha, str, strlen(str));
+	SHA1_Final(hash, &sha);
 	for(unsigned int index = 0; index < sizeof(hash); ++index)
 		sprintf(hexPassword + 2 * index, "%02x", hash[index]);
 	return hexPassword;
@@ -133,7 +133,7 @@ inline void insertUserAvailableFiles(MYSQL * database, int &client, int id)
 inline void insertInUserInfo(MYSQL * database, char * username, char * password)
 {
 	char sqlCommand[1024];
-	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s')", username, getSHA256Hash(password));
+	sprintf(sqlCommand, "insert into UserInfo value (NULL, '%s', '%s')", username, getSHAHash(password));
 	query(database, sqlCommand);
 }
 

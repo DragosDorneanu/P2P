@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include "ValidationProcedures.hpp"
+#include "ConnectionEncryptor.hpp"
 
 #define SIGN_UP_ERROR 3
 #define SIGN_UP_SUCCESS 6
@@ -39,13 +40,16 @@ void signUpProcedure(int &client)
 {
 	char username[50], password[50], downloadPath[512];
 	unsigned int sizeOfUsername, sizeOfPassword, signUpStatus;
+	ConnectionEncryptor encryptor(client);
 
+	if(!encryptor.receivePublicKey())
+		readError();
 	cin.ignore(1, '\n');
 	cout << "Enter username : ";
 	cin.getline(username, 50);
 	sizeOfUsername = strlen(username);
 	readPasswordInHiddenMode(password, sizeOfPassword);
-	sendUserInfoToServer(client, sizeOfUsername, username, sizeOfPassword, password);
+	sendUserInfoToServer(encryptor, sizeOfUsername, username, sizeOfPassword, password);
 	readDownloadPath(downloadPath);
 
 	if(read(client, &signUpStatus, 4) == -1)

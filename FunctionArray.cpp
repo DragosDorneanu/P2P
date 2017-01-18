@@ -164,7 +164,10 @@ void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE])
 			for(auto peer = alreadyConnected.begin(); peer != alreadyConnected.end(); ++peer)
 			{
 				if(peer->fileID == toDeleteFileID)
+				{
+					close(peer->requestSocket);
 					alreadyConnected.erase(peer);
+				}
 			}
 			activeList.erase(it);
 			return;
@@ -307,6 +310,7 @@ void FunctionArray::initFileTransfer(vector<Peer> peer, char fileName[100], unsi
 		if(!connectRequestSocket(client, destinationPeer))
 			continue;
 
+		peer[index].requestSocket = client;
 		parameter = new MakeDownloadRequestParameter(client, fileNameSize, fileName, peerStartOffset, peerEndOffset, fileID);
 		alreadyConnected.insert(peer[index]);
 		cout << "Connecting to " << peer[index].ip << " and port " << peer[index].port << endl;
@@ -368,7 +372,7 @@ void * FunctionArray::startDownloadProcedure(void * args)
 			readError();
 		fileName[fileNameSize] = '\0';
 		if(parameter->type == START_DOWNLOAD)
-			activeList.insert(ActiveObject(fileName, "downloading", 0.0, parameter->fileID));
+			activeList.insert(ActiveObject(fileName, 0, "downloading", 0.0, parameter->fileID));
 
 		while((readBytes = read(client, &ipSize, 4)) > 0 && ipSize != -1 &&
 					(readBytes = read(client, peerIP, ipSize)) > 0 &&
@@ -391,14 +395,14 @@ void * FunctionArray::startDownloadProcedure(void * args)
 			else initFileTransfer(peer, fileName, fileNameSize, parameter->startOffset, parameter->endOffset, parameter->fileID);
 			if(downloadFinished(parameter->fileID))
 			{
-				activeList.erase(activeList.find(ActiveObject(fileName, "downloading", 0.0, parameter->fileID)));
+				activeList.erase(activeList.find(ActiveObject(fileName, 0, "downloading", 0.0, parameter->fileID)));
 				downloadAcknowledgement(parameter->fileID);
 			}
 		}
 		else unfinishedDownload.push_back(DownloadProcedureParameter(parameter->fileID, parameter->type, parameter->startOffset, parameter->endOffset));
 	}
 	else cout << "Wanted file does not exist..." << endl;
-	return (void *)(NULL);
+	return (void *)NULL;
 }
 
 void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
@@ -612,7 +616,7 @@ bool sendFileChunkToPeer(int &peer, char fileChunk[CHUNK_SIZE], unsigned int chu
 {
 	if(write(peer, fileChunk, chunkSize) == -1)
 	{
-		perror("Send file chunk error");
+		perror("Send file chunk");
 		return false;
 	}
 	return true;
@@ -677,6 +681,7 @@ void * FunctionArray::solveDownloadRequest(void * args)
 	char fileName[100];
 	unsigned int fileNameSize;
 	unsigned long long startOffset, endOffset;
+	set<ActiveObject, ActiveObjectComparator>::iterator found;
 
 	pthread_detach(pthread_self());
 	if(read(parameter->peer, &fileNameSize, 4) == -1 || read(parameter->peer, fileName, fileNameSize) == -1)
@@ -684,7 +689,14 @@ void * FunctionArray::solveDownloadRequest(void * args)
 	fileName[fileNameSize] = '\0';
 
 	ActiveObject seedingFile(fileName);
-	activeList.insert(seedingFile);
+	found = activeList.find(seedingFile);
+	if(found != activeList.end())
+	{
+		ActiveObject seedingFile(fileName, found->downloadCount + 1);
+		activeList.erase(found);
+		activeList.insert(seedingFile);
+	}
+	else activeList.insert(seedingFile);
 	cout << endl << "Request : " << endl;
 	cout << "File name : " << fileName << endl;
 	cout << "From : " << "IP " << inet_ntoa(parameter->from.sin_addr) << " PORT " << parameter->from.sin_port << endl;
@@ -692,7 +704,14 @@ void * FunctionArray::solveDownloadRequest(void * args)
 		readError();
 	cout << "Chunck Range : " << startOffset << " => " << endOffset << endl;
 	sendFileChunk(parameter->peer, fileName, startOffset, endOffset);
-	activeList.erase(activeList.find(seedingFile));
+	found = activeList.find(seedingFile);
+	if(found != activeList.end())
+	{
+		if(found->downloadCount == 1)
+			activeList.erase(activeList.find(seedingFile));
+	else
+		--(found->downloadCount);
+	}
 	return (void *)(NULL);
 }
 

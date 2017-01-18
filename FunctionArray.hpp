@@ -26,12 +26,14 @@ struct Peer
 	string ip;
 	uint16_t port;
 	string fileID;
+	int requestSocket;
 
-	Peer(string ip, uint16_t port, string fileID = "")
+	Peer(string ip, uint16_t port, string fileID = "", int requestSocket = 0)
 	{
 		this->ip = ip;
 		this->port = port;
 		this->fileID = fileID;
+		this->requestSocket = requestSocket;
 	}
 };
 
@@ -68,13 +70,15 @@ struct ActiveObject
 	string status;
 	double percentage;
 	string fileID;
+	mutable unsigned int downloadCount;
 
-	ActiveObject(string fileName, string status = "seeding", double percentage = 0.0, string fileID = "")
+	ActiveObject(string fileName, unsigned int downloadCount = 1, string status = "seeding", double percentage = 0.0, string fileID = "")
 	{
 		this->fileName = fileName;
 		this->status = status;
 		this->percentage = percentage;
 		this->fileID = fileID;
+		this->downloadCount = downloadCount;
 	}
 };
 
@@ -83,6 +87,11 @@ struct ActiveObjectComparator
 	int operator()(ActiveObject obj1, ActiveObject obj2)
 	{
 		int difference = obj1.fileID.compare(obj2.fileID);
+		if(difference == 0)
+		{
+			difference = obj1.fileName.compare(obj2.fileName);
+			return difference < 0;
+		}
 		return difference < 0;
 	}
 };
