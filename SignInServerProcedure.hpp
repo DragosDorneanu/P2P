@@ -47,14 +47,22 @@ void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 	char username[50], password[50], sqlCommand[300];
 	ConnectionDecryptor decryptor(parameters->client);
 
-	decryptor.sendPublicKey();
+	if(!decryptor.sendPublicKey())
+	{
+		loginFailMessage(parameters->client);
+		return;
+	}
 	if(read(parameters->client, &parameters->clientInfo.sin_port, sizeof(parameters->clientInfo.sin_port)) == -1 ||
 			!decryptor.receiveEncryptedMessage())
 	{
-			loginFailMessage(parameters->client);
-			readError();
+		loginFailMessage(parameters->client);
+		readError();
 	}
-	decryptor.decrypt();
+	if(!decryptor.decrypt())
+	{
+		loginFailMessage(parameters->client);
+		return;
+	}
 	strcpy(username, decryptor.getDecryptedMessage());
 
 	if(!decryptor.receiveEncryptedMessage())
@@ -62,7 +70,11 @@ void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 		loginFailMessage(parameters->client);
 		readError();
 	}
-	decryptor.decrypt();
+	if(!decryptor.decrypt())
+	{
+		loginFailMessage(parameters->client);
+		return;
+	}
 	strcpy(password, decryptor.getDecryptedMessage());
 
 	sprintf(sqlCommand, "select id from UserInfo where username = '%s' and password = '%s' and id in (select id from UserStatus where status = 'offline')",
