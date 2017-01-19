@@ -118,7 +118,6 @@ int main()
 			continue;
 
 		ClientThreadParameter * threadParameters = new ClientThreadParameter(clientSocket, from);
-		cout << 1 << endl;
 		pthread_create(&thread, NULL, solveRequest, (void *)threadParameters);
 	}
 	return 0;

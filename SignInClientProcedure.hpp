@@ -50,6 +50,7 @@ void commandPrompt(FunctionArray * commandArray)
 void * makeRequests(void * args)
 {
 	FunctionArray * commandArray = (FunctionArray *)(args);
+	//bcommandArray->resumeUnfinishedDownloads();
 	commandPrompt(commandArray);
 	return (void *)(NULL);
 }
@@ -104,7 +105,8 @@ void signInProcedure(int &client, int &servent)
 	commandArray.setServent(servent);
 	commandArray.setSignalHandler();
 
-	encryptor.receivePublicKey();
+	if(!encryptor.receivePublicKey())
+		readError();
 	cin.ignore(1, '\n');
 	cout << "Username : ";
 	cin.getline(username, 50);
@@ -119,7 +121,12 @@ void signInProcedure(int &client, int &servent)
 	{
 		FileShareParameter * parameter = new FileShareParameter(client, downloadPath);
 		pthread_create(&fileShareThread, NULL, shareFiles, (void *)parameter);
+		cout << "Sharing your seeding directory content..." << endl;
+		sleep(2);
+		cout << "Please wait..." << endl;
 		sleep(5);
+		cout << "This could take a while because of the size of your seeding directory" << endl;
+		pthread_join(fileShareThread, (void **)NULL);
 		cout << "You have signed in successfully!!!" << endl;
 		chdir(downloadPath);
 

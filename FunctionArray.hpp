@@ -101,11 +101,14 @@ struct ActiveObjectThread
 	string fileID;
 	pthread_t thread;
 	bool active;
+	unsigned long long int startOffset, endOffset;
 
-	ActiveObjectThread(string fileID, pthread_t thread, bool active = true)
+	ActiveObjectThread(string fileID, pthread_t thread, unsigned long long int startOffset = 0, unsigned long long int endOffset = 0, bool active = true)
 	{
 		this->fileID = fileID;
 		this->thread = thread;
+		this->startOffset = startOffset;
+		this->endOffset = endOffset;
 		this->active = active;
 	}
 };
@@ -120,6 +123,7 @@ private:
 	static deque<DownloadProcedureParameter> unfinishedDownload;
 	static set<ActiveObject, ActiveObjectComparator> activeList;
 	static short DOWNLOAD, FIND, QUIT, DOWNLOAD_FINISHED;
+	static bool continueDownloads;
 
 	static void sendInfoToServer(void * data, unsigned int dataSize);
 	static void displayActiveList(char command[MAX_COMMAND_SIZE]);
@@ -140,6 +144,7 @@ private:
 	static void downloadAcknowledgement(char fileID[16]);
 	static void deleteFromActiveDownload(ActiveObjectThread obj);
 	static ActiveObjectThread * getActiveObjectThread(pthread_t threadID);
+	//static void saveUnfinishedDownloads();
 
 public:
 	FunctionArray();
@@ -154,6 +159,7 @@ public:
 	static int getServent();
 	static void * solveDownloadRequest(void * args);
 	static void finishDownloads();
+	//static void resumeUnfinishedDownloads();
 };
 
 struct DownloadParameter

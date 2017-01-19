@@ -118,7 +118,6 @@ int main()
 
 	if(write(socketDescriptor, &option, 4) == -1)
 		writeError();
-	cout << 1 << endl;
 	if(option == 1)
 		signUpProcedure(socketDescriptor);
 	else

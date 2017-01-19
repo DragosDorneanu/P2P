@@ -131,7 +131,8 @@ bool ConnectionDecryptor::receiveEncryptedMessage()
 
 bool ConnectionDecryptor::decrypt()
 {
-	if(RSA_private_decrypt(encryptedMessageLength, (unsigned char *)encryptedMessage, (unsigned char *)decryptedMessage, rsa, RSA_PKCS1_PADDING) == -1)
+	int decryptedMessageLength;
+	if((decryptedMessageLength = RSA_private_decrypt(encryptedMessageLength, (unsigned char *)encryptedMessage, (unsigned char *)decryptedMessage, rsa, RSA_PKCS1_PADDING)) == -1)
 	{
 		char err[1000];
 		ERR_load_crypto_strings();
@@ -141,6 +142,7 @@ bool ConnectionDecryptor::decrypt()
 		close(client);
 		return false;
 	}
+	decryptedMessage[decryptedMessageLength] = '\0';
 	return true;
 }
 

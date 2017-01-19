@@ -90,6 +90,8 @@ void setSignalError()
 void FunctionArray::quitSignalHandler(int signal)
 {
 	sendInfoToServer(&QUIT, 2);
+	close(client);
+	close(servent);
 	cout << endl << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
@@ -151,6 +153,7 @@ void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE])
 	{
 		if(it->fileID == toDeleteFileID)
 		{
+			pause((char *)toDeleteFileID.c_str());
 			remove(it->fileName.c_str());
 			for(index = 0; index < activeDownload.size(); ++index)
 			{
@@ -170,9 +173,11 @@ void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE])
 				}
 			}
 			activeList.erase(it);
+			cout << "Active download deleted" << endl;
 			return;
 		}
 	}
+	cout << "Active download not found" << endl;
 }
 
 bool containsNonDigit(char * str, unsigned int size)
@@ -221,6 +226,7 @@ void * FunctionArray::downloadFileChunk(void * args)
 	sockaddr_in peerInfo;
 	unsigned int peerInfoSize = sizeof(sockaddr);
 	ActiveObjectThread * activeDownloadThread = getActiveObjectThread(pthread_self());
+	set<Peer, PeerComparator>::iterator found;
 
 	getpeername(parameter->requestSocket, (sockaddr *)&peerInfo, &peerInfoSize);
 	lseek(downloadFile, parameter->startOffset, SEEK_SET);
@@ -256,7 +262,9 @@ void * FunctionArray::downloadFileChunk(void * args)
 		changeOffsetError();
 	if((unsigned long long int)currentOffset < parameter->endOffset - 1)
 		unfinishedDownload.push_back(DownloadProcedureParameter(parameter->fileID, FINISH_DOWNLOAD, currentOffset, parameter->endOffset));
-	alreadyConnected.erase(alreadyConnected.find(Peer(inet_ntoa(peerInfo.sin_addr), peerInfo.sin_port, parameter->fileID)));
+	found = alreadyConnected.find(Peer(inet_ntoa(peerInfo.sin_addr), peerInfo.sin_port, parameter->fileID));
+	if(found != alreadyConnected.end())
+		alreadyConnected.erase(found);
 	close(parameter->requestSocket);
 	close(downloadFile);
 	delete parameter;
@@ -313,7 +321,6 @@ void FunctionArray::initFileTransfer(vector<Peer> peer, char fileName[100], unsi
 		peer[index].requestSocket = client;
 		parameter = new MakeDownloadRequestParameter(client, fileNameSize, fileName, peerStartOffset, peerEndOffset, fileID);
 		alreadyConnected.insert(peer[index]);
-		cout << "Connecting to " << peer[index].ip << " and port " << peer[index].port << endl;
 		pthread_create(&requestDownloadThread, NULL, downloadFileChunk, (void *)parameter);
 		downloadThread.push_back(requestDownloadThread);
 		activeDownload.push_back(ActiveObjectThread(fileID, requestDownloadThread));
@@ -395,7 +402,9 @@ void * FunctionArray::startDownloadProcedure(void * args)
 			else initFileTransfer(peer, fileName, fileNameSize, parameter->startOffset, parameter->endOffset, parameter->fileID);
 			if(downloadFinished(parameter->fileID))
 			{
-				activeList.erase(activeList.find(ActiveObject(fileName, 0, "downloading", 0.0, parameter->fileID)));
+				set<ActiveObject, ActiveObjectComparator>::iterator found = activeList.find(ActiveObject(fileName, 0, "downloading", 0.0, parameter->fileID));
+				if(found != activeList.end())
+					activeList.erase(found);
 				downloadAcknowledgement(parameter->fileID);
 			}
 		}
@@ -430,8 +439,8 @@ void FunctionArray::displayActiveList(char command[MAX_COMMAND_SIZE])
 	for(auto it = activeList.begin(); it != activeList.end(); ++it)
 	{
 		cout << it->fileName << "     " << it->status <<  "     ";
-		if(it->status != "seeding")
-			cout << it->percentage << '%' << "     ";
+		//if(it->status != "seeding")
+			//cout << it->percentage << '%' << "     ";
 		 cout << it->fileID << endl;
 	}
 }
@@ -439,6 +448,8 @@ void FunctionArray::displayActiveList(char command[MAX_COMMAND_SIZE])
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
 	sendInfoToServer(&QUIT, 2);
+	close(client);
+	close(servent);
 	cout << "Good bye!" << endl;
 	exit(EXIT_SUCCESS);
 }
@@ -616,7 +627,7 @@ bool sendFileChunkToPeer(int &peer, char fileChunk[CHUNK_SIZE], unsigned int chu
 {
 	if(write(peer, fileChunk, chunkSize) == -1)
 	{
-		perror("Send file chunk");
+		//perror("Send file chunk");
 		return false;
 	}
 	return true;
@@ -671,7 +682,6 @@ void FunctionArray::sendFileChunk(int &peer, char fileName[100], unsigned long l
 			return;
 		}
 	}
-	cout << "Sent !!!" << endl;
 	freeMemory(peer, file);
 }
 
@@ -697,13 +707,11 @@ void * FunctionArray::solveDownloadRequest(void * args)
 		activeList.insert(seedingFile);
 	}
 	else activeList.insert(seedingFile);
-	cout << endl << "Request : " << endl;
-	cout << "File name : " << fileName << endl;
-	cout << "From : " << "IP " << inet_ntoa(parameter->from.sin_addr) << " PORT " << parameter->from.sin_port << endl;
+
 	if(read(parameter->peer, &startOffset, 8) == -1 || read(parameter->peer, &endOffset, 8) == -1)
 		readError();
-	cout << "Chunck Range : " << startOffset << " => " << endOffset << endl;
 	sendFileChunk(parameter->peer, fileName, startOffset, endOffset);
+
 	found = activeList.find(seedingFile);
 	if(found != activeList.end())
 	{
@@ -731,5 +739,48 @@ void FunctionArray::finishDownloads()
 			pthread_create(&startDownloadProcedureThread, NULL, startDownloadProcedure, (void *)&unfinishedDownload[0]);
 			unfinishedDownload.pop_front();
 		}
+		sleep(5);
 	}
 }
+
+/*void FunctionArray::resumeUnfinishedDownloads()
+{
+	bool downloadType;
+	string type, fileID;
+	ifstream toFinish("./to_finish.in");
+	unsigned long long int startOffset, endOffset;
+
+	cout << "Reading to_finish.in" <<endl;
+	while(toFinish >> type)
+	{
+		toFinish >> fileID;
+		if(type == "active")
+		{
+			toFinish >> startOffset >> endOffset;
+			cout << "Inserting active" << endl;
+			unfinishedDownload.push_back(DownloadProcedureParameter((char *)(fileID.c_str()), FINISH_DOWNLOAD, startOffset, endOffset));
+		}
+		else
+		{
+			toFinish >> downloadType >> startOffset >> endOffset;
+			cout << "Inserting unfinished" << endl;
+			unfinishedDownload.push_back(DownloadProcedureParameter((char *)fileID.c_str(), downloadType, startOffset, endOffset));
+		}
+	}
+	toFinish.close();
+}
+
+void FunctionArray::saveUnfinishedDownloads()
+{
+	cout << "Writing to_finish.in" <<endl;
+	ofstream toFinish("./to_finish.in");
+
+	for(auto it = unfinishedDownload.begin(); it != unfinishedDownload.end(); ++it)
+		toFinish << "unfinished" << ' ' << it->fileID << ' ' << it->type << ' ' << it->startOffset << ' ' << it->endOffset << endl;
+
+	for(auto it = activeDownload.begin(); it != activeDownload.end(); ++it)
+		toFinish << "active" << ' ' << it->fileID << ' ' << it->startOffset << ' ' << it->endOffset << endl;
+
+	toFinish.close();
+}
+*/

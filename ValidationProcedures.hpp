@@ -174,7 +174,6 @@ void markEndOfFileSharing(int &client)
 void * shareFiles(void * args)
 {
 	FileShareParameter * parameter = (FileShareParameter *)(args);
-	pthread_detach(pthread_self());
 	listDirectory(parameter->client, parameter->downloadPath);
 	markEndOfFileSharing(parameter->client);
 	return (void *)(NULL);

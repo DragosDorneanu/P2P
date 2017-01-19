@@ -19,7 +19,7 @@ class ConnectionDecryptor
 	int client;
 	string publicKey;
 	string privateKey;
-	char encryptedMessage[256], decryptedMessage[4096];
+	char decryptedMessage[4096], encryptedMessage[256];
 	unsigned int encryptedMessageLength;
 
 	bool createRSA();
