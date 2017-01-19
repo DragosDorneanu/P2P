@@ -27,7 +27,6 @@
 #define SEARCH_BY_BIGGER_SIZE 23
 #define SEARCH_BY_SMALLER_SIZE 24
 #define OPTION pair<int, char *>
-#define PEER pair<char *, uint16_t>
 #define CHUNK_SIZE 10240
 #define START_DOWNLOAD true
 #define FINISH_DOWNLOAD false
@@ -45,22 +44,6 @@ deque<ActiveObjectThread> FunctionArray::activeDownload;
 set<Peer, PeerComparator> FunctionArray::alreadyConnected;
 set<ActiveObject, ActiveObjectComparator> FunctionArray::activeList;
 deque<DownloadProcedureParameter> FunctionArray::unfinishedDownload;
-
-struct InitFileTransferParameter
-{
-	unsigned int fileNameSize;
-	unsigned long long int fileSize;
-	vector<PEER> peer;
-	char fileName[100];
-
-	InitFileTransferParameter(vector<PEER> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int fileSize)
-	{
-		this->peer = peer;
-		strcpy(this->fileName, fileName);
-		this->fileNameSize = fileNameSize;
-		this->fileSize = fileSize;
-	}
-};
 
 struct MakeDownloadRequestParameter
 {
@@ -81,25 +64,56 @@ struct MakeDownloadRequestParameter
 	}
 };
 
-void setSignalError()
+FunctionArray::FunctionArray()
 {
-	perror("Error while setting signal handler");
-	exit(EXIT_FAILURE);
+	this->function.push_back(make_pair("active", displayActiveList));
+	this->function.push_back(make_pair("delete", deleteFromActiveList));
+	this->function.push_back(make_pair("download", download));
+	this->function.push_back(make_pair("find", find));
+	this->function.push_back(make_pair("pause", pause));
+	this->function.push_back(make_pair("quit", quit));
+	this->function.push_back(make_pair("resume", resume));
 }
 
-void FunctionArray::quitSignalHandler(int signal)
-{
-	sendInfoToServer(&QUIT, 2);
-	close(client);
-	close(servent);
-	cout << endl << "Good bye!" << endl;
-	exit(EXIT_SUCCESS);
+FunctionArray::~FunctionArray() { }
+
+unsigned int FunctionArray::size() {
+	return function.size();
 }
 
-void FunctionArray::setSignalHandler()
+string FunctionArray::getName(unsigned int index) {
+	return function[index].first;
+}
+
+int FunctionArray::exists(string commandName, int lowerBound, int upperBound)
 {
-	if(signal(SIGINT, quitSignalHandler) == SIG_ERR)
-		setSignalError();
+	if(lowerBound <= upperBound)
+	{
+		int mid = (lowerBound + upperBound) / 2;
+		int difference = commandName.compare(getName(mid));
+		if(difference == 0)
+			return mid;
+		else if(difference < 0)
+			return exists(commandName, lowerBound, mid - 1);
+		return exists(commandName, mid + 1, upperBound);
+	}
+	return -1;
+}
+
+void FunctionArray::execute(unsigned int functionIndex, char command[MAX_COMMAND_SIZE]) {
+	(function[functionIndex].second)(command);
+}
+
+void FunctionArray::setClient(int clientSD) {
+	client = clientSD;
+}
+
+void FunctionArray::setServent(int serventSD) {
+	servent = serventSD;
+}
+
+int FunctionArray::getServent() {
+	return servent;
 }
 
 void FunctionArray::writeError()
@@ -132,18 +146,7 @@ void FunctionArray::sendInfoToServer(void * data, unsigned int dataSize)
 		writeError();
 }
 
-bool isDigit(char ch) {
-	return (ch >= '0' && ch <= '9');
-}
-
-bool isLetter(char ch) {
-	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
-}
-
-bool isPunctuationSign(char ch) {
-	return (!isDigit(ch) && !isLetter(ch) && ch != '\n' && ch != '\t' && ch != ' ');
-}
-
+// DELETE
 void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE])
 {
 	unsigned int index;
@@ -180,6 +183,74 @@ void FunctionArray::deleteFromActiveList(char command[MAX_COMMAND_SIZE])
 	cout << "Active download not found" << endl;
 }
 
+void FunctionArray::deleteFromActiveDownload(ActiveObjectThread obj)
+{
+	for(auto it = activeDownload.begin(); it != activeDownload.end(); ++it)
+	{
+		if(it->thread == obj.thread && it->fileID == obj.fileID)
+		{
+			activeDownload.erase(it);
+			return;
+		}
+	}
+}
+
+// ACTIVE
+void FunctionArray::displayActiveList(char command[MAX_COMMAND_SIZE])
+{
+	for(auto it = activeList.begin(); it != activeList.end(); ++it)
+	{
+		cout << it->fileName << "     " << it->status <<  "     ";
+		//if(it->status != "seeding")
+			//cout << it->percentage << '%' << "     ";
+		 cout << it->fileID << endl;
+	}
+}
+
+// QUIT
+void setSignalError()
+{
+	perror("Error while setting signal handler");
+	exit(EXIT_FAILURE);
+}
+
+void FunctionArray::quitSignalHandler(int signal)
+{
+	sendInfoToServer(&QUIT, 2);
+	close(client);
+	close(servent);
+	cout << endl << "Good bye!" << endl;
+	exit(EXIT_SUCCESS);
+}
+
+void FunctionArray::setSignalHandler()
+{
+	if(signal(SIGINT, quitSignalHandler) == SIG_ERR)
+		setSignalError();
+}
+
+void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
+{
+	sendInfoToServer(&QUIT, 2);
+	close(client);
+	close(servent);
+	cout << "Good bye!" << endl;
+	exit(EXIT_SUCCESS);
+}
+
+// FIND
+bool isDigit(char ch) {
+	return (ch >= '0' && ch <= '9');
+}
+
+bool isLetter(char ch) {
+	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
+}
+
+bool isPunctuationSign(char ch) {
+	return (!isDigit(ch) && !isLetter(ch) && ch != '\n' && ch != '\t' && ch != ' ');
+}
+
 bool containsNonDigit(char * str, unsigned int size)
 {
 	for(unsigned int index = 0; index < size; ++index)
@@ -190,6 +261,115 @@ bool containsNonDigit(char * str, unsigned int size)
 	return false;
 }
 
+int getTokenID(char token[MAX_COMMAND_SIZE])
+{
+	if(strcmp(token, "-n") == 0)
+		return SEARCH_BY_NAME;
+	else if(strcmp(token, "-t") == 0)
+		return SEARCH_BY_TYPE;
+	if(strcmp(token, "-s") == 0)
+		return SEARCH_BY_SIZE;
+	if(strcmp(token, "-bs") == 0)
+		return SEARCH_BY_BIGGER_SIZE;
+	if(strcmp(token, "-ss") == 0)
+		return SEARCH_BY_SMALLER_SIZE;
+	return -1;
+}
+
+void FunctionArray::find(char command[MAX_COMMAND_SIZE])
+{
+	int id, readBytes, fileNameSize;
+	char * p, fileName[1024];
+	unsigned int optionCount, restrictionSize, size, hashID;
+	vector<OPTION> option;
+
+	cout << endl;
+	p = strtok(command, " ");
+	while(p && p[0] == '-')
+	{
+		if((id = getTokenID(p)) == -1)
+		{
+			cout << "Unrecognized token : " << p << endl;
+			return;
+		}
+		if(id != SEARCH_BY_NAME)
+		{
+			p = strtok(NULL, " ");
+			if(p == NULL || p[0] == '-' ||
+				(id == SEARCH_BY_SIZE && !isDigit(p[0])) ||
+				(id == SEARCH_BY_TYPE && !isLetter(p[0])) ||
+				(id == SEARCH_BY_BIGGER_SIZE && !isDigit(p[0])) ||
+				(id == SEARCH_BY_SMALLER_SIZE && !isDigit(p[0])))
+			{
+				cout << "Wrong arguments" << endl;
+				return;
+			}
+			option.push_back(make_pair(id, p));
+		}
+		else option.push_back(make_pair(id, (char *)(NULL)));
+		p = strtok(NULL, " ");
+	}
+	if(p != NULL)
+	{
+		sendInfoToServer(&FIND, 2);
+		strcpy(fileName, p);
+		p = strtok(NULL, "\n");
+		if(p != NULL)
+			strcat(fileName, p);
+		fileNameSize = strlen(fileName);
+		optionCount = option.size();
+		sendInfoToServer(&optionCount, 4);
+		for(unsigned int index = 0; index < option.size(); ++index)
+		{
+			sendInfoToServer(&option[index].first, 4);
+			if(option[index].first != SEARCH_BY_NAME)
+			{
+				restrictionSize = strlen(option[index].second);
+				sendInfoToServer(&restrictionSize, 4);
+				sendInfoToServer(option[index].second, restrictionSize);
+			}
+		}
+		sendInfoToServer(&fileNameSize, 4);
+		sendInfoToServer(fileName, fileNameSize);
+		while((readBytes = read(client, &fileNameSize, 4)) > 0 &&
+				fileNameSize != -1 &&
+				(readBytes = read(client, fileName, fileNameSize)) > 0 &&
+				(readBytes = read(client, &size, 4)) > 0 &&
+				(readBytes = read(client, &hashID, 4)) > 0)
+		{
+			fileName[fileNameSize] = '\0';
+			cout << fileName << "     " << size << " bytes" <<  "     " << hashID << endl;
+		}
+		cout << endl;
+		if(readBytes == -1)
+			readError();
+	}
+	else cout << "A file name is needed..." << endl;
+}
+
+// PAUSE
+void FunctionArray::pause(char command[MAX_COMMAND_SIZE])
+{
+	string toPauseFileID(command);
+	for(unsigned int index = 0; index < activeDownload.size(); ++index)
+	{
+		if(activeDownload[index].fileID == toPauseFileID)
+			activeDownload[index].active = false;
+	}
+}
+
+// RESUME
+void FunctionArray::resume(char command[MAX_COMMAND_SIZE])
+{
+	string toResumeFileID(command);
+	for(unsigned int index = 0; index < activeDownload.size(); ++index)
+	{
+		if(activeDownload[index].fileID == toResumeFileID)
+			activeDownload[index].active = true;
+	}
+}
+
+// DOWNLOAD : DOWNLOADER SIDE
 void setPeerInfo(sockaddr_in &destination, string ip, uint16_t port)
 {
 	destination.sin_addr.s_addr = inet_addr(ip.c_str());
@@ -279,18 +459,6 @@ bool createSocket(int &client)
 		return false;
 	}
 	return true;
-}
-
-void FunctionArray::deleteFromActiveDownload(ActiveObjectThread obj)
-{
-	for(auto it = activeDownload.begin(); it != activeDownload.end(); ++it)
-	{
-		if(it->thread == obj.thread && it->fileID == obj.fileID)
-		{
-			activeDownload.erase(it);
-			return;
-		}
-	}
 }
 
 void FunctionArray::initFileTransfer(vector<Peer> peer, char fileName[100], unsigned int fileNameSize, unsigned long long int startOffset, unsigned long long int endOffset, char * fileID)
@@ -434,184 +602,7 @@ void FunctionArray::download(char fileID[MAX_COMMAND_SIZE])
 	else cout << "Wrong arguments : ID must contain only digits and must have size greater than 0" << endl;
 }
 
-void FunctionArray::displayActiveList(char command[MAX_COMMAND_SIZE])
-{
-	for(auto it = activeList.begin(); it != activeList.end(); ++it)
-	{
-		cout << it->fileName << "     " << it->status <<  "     ";
-		//if(it->status != "seeding")
-			//cout << it->percentage << '%' << "     ";
-		 cout << it->fileID << endl;
-	}
-}
-
-void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
-{
-	sendInfoToServer(&QUIT, 2);
-	close(client);
-	close(servent);
-	cout << "Good bye!" << endl;
-	exit(EXIT_SUCCESS);
-}
-
-int getTokenID(char token[MAX_COMMAND_SIZE])
-{
-	if(strcmp(token, "-n") == 0)
-		return SEARCH_BY_NAME;
-	else if(strcmp(token, "-t") == 0)
-		return SEARCH_BY_TYPE;
-	if(strcmp(token, "-s") == 0)
-		return SEARCH_BY_SIZE;
-	if(strcmp(token, "-bs") == 0)
-		return SEARCH_BY_BIGGER_SIZE;
-	if(strcmp(token, "-ss") == 0)
-		return SEARCH_BY_SMALLER_SIZE;
-	return -1;
-}
-
-void FunctionArray::find(char command[MAX_COMMAND_SIZE])
-{
-	int id, readBytes, fileNameSize;
-	char * p, fileName[1024];
-	unsigned int optionCount, restrictionSize, size, hashID;
-	vector<OPTION> option;
-
-	cout << endl;
-	p = strtok(command, " ");
-	while(p && p[0] == '-')
-	{
-		if((id = getTokenID(p)) == -1)
-		{
-			cout << "Unrecognized token : " << p << endl;
-			return;
-		}
-		if(id != SEARCH_BY_NAME)
-		{
-			p = strtok(NULL, " ");
-			if(p == NULL || p[0] == '-' ||
-				(id == SEARCH_BY_SIZE && !isDigit(p[0])) ||
-				(id == SEARCH_BY_TYPE && !isLetter(p[0])) ||
-				(id == SEARCH_BY_BIGGER_SIZE && !isDigit(p[0])) ||
-				(id == SEARCH_BY_SMALLER_SIZE && !isDigit(p[0])))
-			{
-				cout << "Wrong arguments" << endl;
-				return;
-			}
-			option.push_back(make_pair(id, p));
-		}
-		else option.push_back(make_pair(id, (char *)(NULL)));
-		p = strtok(NULL, " ");
-	}
-	if(p != NULL)
-	{
-		sendInfoToServer(&FIND, 2);
-		strcpy(fileName, p);
-		p = strtok(NULL, "\n");
-		if(p != NULL)
-			strcat(fileName, p);
-		fileNameSize = strlen(fileName);
-		optionCount = option.size();
-		sendInfoToServer(&optionCount, 4);
-		for(unsigned int index = 0; index < option.size(); ++index)
-		{
-			sendInfoToServer(&option[index].first, 4);
-			if(option[index].first != SEARCH_BY_NAME)
-			{
-				restrictionSize = strlen(option[index].second);
-				sendInfoToServer(&restrictionSize, 4);
-				sendInfoToServer(option[index].second, restrictionSize);
-			}
-		}
-		sendInfoToServer(&fileNameSize, 4);
-		sendInfoToServer(fileName, fileNameSize);
-		while((readBytes = read(client, &fileNameSize, 4)) > 0 &&
-				fileNameSize != -1 &&
-				(readBytes = read(client, fileName, fileNameSize)) > 0 &&
-				(readBytes = read(client, &size, 4)) > 0 &&
-				(readBytes = read(client, &hashID, 4)) > 0)
-		{
-			fileName[fileNameSize] = '\0';
-			cout << fileName << "     " << size << " bytes" <<  "     " << hashID << endl;
-		}
-		cout << endl;
-		if(readBytes == -1)
-			readError();
-	}
-	else cout << "A file name is needed..." << endl;
-}
-
-void FunctionArray::pause(char command[MAX_COMMAND_SIZE])
-{
-	string toPauseFileID(command);
-	for(unsigned int index = 0; index < activeDownload.size(); ++index)
-	{
-		if(activeDownload[index].fileID == toPauseFileID)
-			activeDownload[index].active = false;
-	}
-}
-
-void FunctionArray::resume(char command[MAX_COMMAND_SIZE])
-{
-	string toResumeFileID(command);
-	for(unsigned int index = 0; index < activeDownload.size(); ++index)
-	{
-		if(activeDownload[index].fileID == toResumeFileID)
-			activeDownload[index].active = true;
-	}
-}
-
-FunctionArray::FunctionArray()
-{
-	this->function.push_back(make_pair("active", displayActiveList));
-	this->function.push_back(make_pair("delete", deleteFromActiveList));
-	this->function.push_back(make_pair("download", download));
-	this->function.push_back(make_pair("find", find));
-	this->function.push_back(make_pair("pause", pause));
-	this->function.push_back(make_pair("quit", quit));
-	this->function.push_back(make_pair("resume", resume));
-}
-
-FunctionArray::~FunctionArray() { }
-
-unsigned int FunctionArray::size() {
-	return function.size();
-}
-
-string FunctionArray::getName(unsigned int index) {
-	return function[index].first;
-}
-
-int FunctionArray::exists(string commandName, int lowerBound, int upperBound)
-{
-	if(lowerBound <= upperBound)
-	{
-		int mid = (lowerBound + upperBound) / 2;
-		int difference = commandName.compare(getName(mid));
-		if(difference == 0)
-			return mid;
-		else if(difference < 0)
-			return exists(commandName, lowerBound, mid - 1);
-		return exists(commandName, mid + 1, upperBound);
-	}
-	return -1;
-}
-
-void FunctionArray::execute(unsigned int functionIndex, char command[MAX_COMMAND_SIZE]) {
-	(function[functionIndex].second)(command);
-}
-
-void FunctionArray::setClient(int clientSD) {
-	client = clientSD;
-}
-
-void FunctionArray::setServent(int serventSD) {
-	servent = serventSD;
-}
-
-int FunctionArray::getServent() {
-	return servent;
-}
-
+// DOWNLOAD : SEEDER SIDE
 int readFileChunk(int &file, char fileChunk[CHUNK_SIZE], unsigned int chunkSize)
 {
 	int readBytes;
