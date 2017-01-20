@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <cmath>
 #include <set>
+#include <fstream>
 #include "FunctionArray.hpp"
 
 #define SEARCH_BY_SIZE 20
@@ -39,6 +40,7 @@ short FunctionArray::DOWNLOAD = 131;
 short FunctionArray::FIND = 132;
 short FunctionArray::QUIT = 135;
 short FunctionArray::DOWNLOAD_FINISHED = 136;
+bool FunctionArray::continueDownloads = true;
 
 deque<ActiveObjectThread> FunctionArray::activeDownload;
 set<Peer, PeerComparator> FunctionArray::alreadyConnected;
@@ -217,6 +219,8 @@ void setSignalError()
 void FunctionArray::quitSignalHandler(int signal)
 {
 	sendInfoToServer(&QUIT, 2);
+	continueDownloads = false;
+	saveUnfinishedDownloads();
 	close(client);
 	close(servent);
 	cout << endl << "Good bye!" << endl;
@@ -232,6 +236,8 @@ void FunctionArray::setSignalHandler()
 void FunctionArray::quit(char command[MAX_COMMAND_SIZE])
 {
 	sendInfoToServer(&QUIT, 2);
+	continueDownloads = false;
+	saveUnfinishedDownloads();
 	close(client);
 	close(servent);
 	cout << "Good bye!" << endl;
@@ -491,7 +497,7 @@ void FunctionArray::initFileTransfer(vector<Peer> peer, char fileName[100], unsi
 		alreadyConnected.insert(peer[index]);
 		pthread_create(&requestDownloadThread, NULL, downloadFileChunk, (void *)parameter);
 		downloadThread.push_back(requestDownloadThread);
-		activeDownload.push_back(ActiveObjectThread(fileID, requestDownloadThread));
+		activeDownload.push_back(ActiveObjectThread(fileID, requestDownloadThread, peerStartOffset, peerEndOffset));
 		peerStartOffset = peerEndOffset;
 
 		if(peer.size() > 1)
@@ -717,7 +723,7 @@ void * FunctionArray::solveDownloadRequest(void * args)
 void FunctionArray::finishDownloads()
 {
 	unsigned int idSize;
-	while(true)
+	while(continueDownloads)
 	{
 		if(unfinishedDownload.size())
 		{
@@ -734,27 +740,25 @@ void FunctionArray::finishDownloads()
 	}
 }
 
-/*void FunctionArray::resumeUnfinishedDownloads()
+// RESUME DOWNLOAD AFTER LOGOUT AND LOGIN
+void FunctionArray::resumeUnfinishedDownloads()
 {
 	bool downloadType;
 	string type, fileID;
 	ifstream toFinish("./to_finish.in");
 	unsigned long long int startOffset, endOffset;
 
-	cout << "Reading to_finish.in" <<endl;
 	while(toFinish >> type)
 	{
 		toFinish >> fileID;
 		if(type == "active")
 		{
 			toFinish >> startOffset >> endOffset;
-			cout << "Inserting active" << endl;
 			unfinishedDownload.push_back(DownloadProcedureParameter((char *)(fileID.c_str()), FINISH_DOWNLOAD, startOffset, endOffset));
 		}
 		else
 		{
 			toFinish >> downloadType >> startOffset >> endOffset;
-			cout << "Inserting unfinished" << endl;
 			unfinishedDownload.push_back(DownloadProcedureParameter((char *)fileID.c_str(), downloadType, startOffset, endOffset));
 		}
 	}
@@ -763,7 +767,6 @@ void FunctionArray::finishDownloads()
 
 void FunctionArray::saveUnfinishedDownloads()
 {
-	cout << "Writing to_finish.in" <<endl;
 	ofstream toFinish("./to_finish.in");
 
 	for(auto it = unfinishedDownload.begin(); it != unfinishedDownload.end(); ++it)
@@ -774,4 +777,4 @@ void FunctionArray::saveUnfinishedDownloads()
 
 	toFinish.close();
 }
-*/
+

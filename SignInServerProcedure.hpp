@@ -41,6 +41,13 @@ void successfulLoginProcedure(MYSQL *& database, int &client, struct sockaddr_in
 	insertUserAvailableFiles(database, client, idValue);
 }
 
+void signinFail(int &client, MYSQL * database)
+{
+	loginFailMessage(client);
+	close(client);
+	mysql_close(database);
+}
+
 void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters)
 {
 	MYSQL_RES * queryResult;
@@ -49,30 +56,33 @@ void signInServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 
 	if(!decryptor.sendPublicKey())
 	{
-		loginFailMessage(parameters->client);
+		signinFail(parameters->client, database);
 		return;
 	}
+
 	if(read(parameters->client, &parameters->clientInfo.sin_port, sizeof(parameters->clientInfo.sin_port)) == -1 ||
 			!decryptor.receiveEncryptedMessage())
 	{
-		loginFailMessage(parameters->client);
-		readError();
+		signinFail(parameters->client, database);
+		return;
 	}
+
 	if(!decryptor.decrypt())
 	{
-		loginFailMessage(parameters->client);
+		signinFail(parameters->client, database);
 		return;
 	}
 	strcpy(username, decryptor.getDecryptedMessage());
 
 	if(!decryptor.receiveEncryptedMessage())
 	{
-		loginFailMessage(parameters->client);
-		readError();
+		signinFail(parameters->client, database);
+		return;
 	}
+
 	if(!decryptor.decrypt())
 	{
-		loginFailMessage(parameters->client);
+		signinFail(parameters->client, database);
 		return;
 	}
 	strcpy(password, decryptor.getDecryptedMessage());

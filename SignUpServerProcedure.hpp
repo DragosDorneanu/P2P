@@ -37,6 +37,13 @@ void succesfulSignUpProcedure(MYSQL *& database, int &client, sockaddr_in client
 	insertInUserStatus(database, clientInfo);
 }
 
+void signupFail(int &client, MYSQL * database)
+{
+	signUpFailMessage(client);
+	close(client);
+	mysql_close(database);
+}
+
 void signUpServerProcedure(MYSQL *& database, ClientThreadParameter * parameters)
 {
 	MYSQL_RES * queryResult;
@@ -45,30 +52,31 @@ void signUpServerProcedure(MYSQL *& database, ClientThreadParameter * parameters
 
 	if(!decryptor.sendPublicKey())
 	{
-		signUpFailMessage(parameters->client);
+		signupFail(parameters->client, database);
 		return;
 	}
 
 	if(!decryptor.receiveEncryptedMessage())
 	{
-		signUpFailMessage(parameters->client);
-		readError();
+		signupFail(parameters->client, database);
+		return;
 	}
 	if(!decryptor.decrypt())
 	{
-		signUpFailMessage(parameters->client);
+		signupFail(parameters->client, database);
 		return;
 	}
 	strcpy(username, decryptor.getDecryptedMessage());
 
 	if(!decryptor.receiveEncryptedMessage())
 	{
-		signUpFailMessage(parameters->client);
-		readError();
+		signupFail(parameters->client, database);
+		return;
 	}
+
 	if(!decryptor.decrypt())
 	{
-		signUpFailMessage(parameters->client);
+		signupFail(parameters->client, database);
 		return;
 	}
 	strcpy(password, decryptor.getDecryptedMessage());

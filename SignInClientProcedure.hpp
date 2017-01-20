@@ -50,7 +50,7 @@ void commandPrompt(FunctionArray * commandArray)
 void * makeRequests(void * args)
 {
 	FunctionArray * commandArray = (FunctionArray *)(args);
-	//bcommandArray->resumeUnfinishedDownloads();
+	commandArray->resumeUnfinishedDownloads();
 	commandPrompt(commandArray);
 	return (void *)(NULL);
 }

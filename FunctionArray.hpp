@@ -144,7 +144,7 @@ private:
 	static void downloadAcknowledgement(char fileID[16]);
 	static void deleteFromActiveDownload(ActiveObjectThread obj);
 	static ActiveObjectThread * getActiveObjectThread(pthread_t threadID);
-	//static void saveUnfinishedDownloads();
+	static void saveUnfinishedDownloads();
 
 public:
 	FunctionArray();
@@ -159,7 +159,7 @@ public:
 	static int getServent();
 	static void * solveDownloadRequest(void * args);
 	static void finishDownloads();
-	//static void resumeUnfinishedDownloads();
+	static void resumeUnfinishedDownloads();
 };
 
 struct DownloadParameter
